@@ -4,6 +4,8 @@ import lombok.Data;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Node_URI;
 import org.apache.jena.graph.Triple;
+import org.apache.jena.sparql.expr.Expr;
+import org.apache.jena.sparql.expr.aggregate.Aggregator;
 import org.apache.jena.sparql.syntax.Element;
 import org.apache.jena.sparql.syntax.TripleCollectorMark;
 
@@ -95,5 +97,10 @@ public class Query implements ElementBuilder {
         System.out.println(pop.toString());
         q.getPrologue().setPrefix(pop.getPrefix(), pop.getUri());
         return this;
+    }
+
+    public Expr allocAggregate(Aggregator custom) {
+        return q.allocAggregate(custom);
+
     }
 }

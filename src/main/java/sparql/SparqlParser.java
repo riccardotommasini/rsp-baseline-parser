@@ -26,6 +26,8 @@ import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Node_URI;
 import org.apache.jena.sparql.core.Var;
 import org.apache.jena.sparql.expr.*;
+import org.apache.jena.sparql.expr.aggregate.AggregateRegistry;
+import org.apache.jena.sparql.expr.aggregate.Args;
 import org.apache.jena.sparql.syntax.*;
 import org.apache.jena.sparql.util.ExprUtils;
 import org.parboiled.BaseParser;
@@ -230,13 +232,30 @@ public class SparqlParser extends BaseParser<Object> {
     }
 
     public Rule FunctionCall() {
-        return Sequence(IriRef(), ArgList());
+        debug("FunctionCall");
+        return Sequence(IriRef(), push(new Function(match())), ArgList(),
+                push(((Function) pop(1)).add((Args) pop())),
+                FirstOf(addFunctionCall(), addAggregateFunctionCall()));
+    }
+
+    public Rule addAggregateFunctionCall() {
+        return Sequence(Test((AggregateRegistry.isRegistered(((Function) peek()).getIri()))),
+                push(getQuery().allocAggregate(((Function) pop()).createCustom())));
+    }
+
+    public boolean addFunctionCall() {
+        return push(((Function) pop()).build());
     }
 
     public Rule ArgList() {
-        return FirstOf(Sequence(OPEN_BRACE(), CLOSE_BRACE()), Sequence(
-                OPEN_BRACE(), Expression(), ZeroOrMore(Sequence(COMMA(),
-                        Expression())), CLOSE_BRACE()));
+        return Sequence(push(new Args()), FirstOf(Sequence(OPEN_BRACE(), CLOSE_BRACE()), Sequence(
+                OPEN_BRACE(), Expression(), addArg(), ZeroOrMore(Sequence(COMMA(),
+                        Expression(), addArg())), CLOSE_BRACE())));
+    }
+
+    public boolean addArg() {
+        ((Args) peek(1)).add((Expr) pop());
+        return true;
     }
 
     public Rule ConstructTemplate() {
@@ -400,7 +419,7 @@ public class SparqlParser extends BaseParser<Object> {
 
     public Rule PrimaryExpression() {
         return FirstOf(BrackettedExpression(), BuiltInCall(),
-                Sequence(IriRefOrFunction(), asExpr()), Sequence(RdfLiteral(), asExpr()), Sequence(NumericLiteral(), asExpr()),
+                IriRefOrFunction(), Sequence(RdfLiteral(), asExpr()), Sequence(NumericLiteral(), asExpr()),
                 Sequence(BooleanLiteral(), asExpr()), Sequence(Var(), asExpr()));
     }
 
@@ -433,7 +452,9 @@ public class SparqlParser extends BaseParser<Object> {
     }
 
     public Rule IriRefOrFunction() {
-        return Sequence(IriRef(), Optional(ArgList()));
+        return Sequence(IriRef(), push(new Function((Node_URI) pop())), Optional(Sequence(ArgList()
+                , push(((Function) pop(1)).add((Args) pop())), FirstOf(addFunctionCall(), addAggregateFunctionCall())
+        )));
     }
 
     public Rule RdfLiteral() {
@@ -470,7 +491,7 @@ public class SparqlParser extends BaseParser<Object> {
 
     public Rule String() {
         return Sequence(FirstOf(STRING_LITERAL_LONG1(), STRING_LITERAL1(),
-                STRING_LITERAL_LONG2(), STRING_LITERAL2()), push(NodeFactory.createLiteralByValue(match(), XSDDatatype.XSDstring)));
+                STRING_LITERAL_LONG2(), STRING_LITERAL2()), push(NodeFactory.createLiteralByValue(match().trim().replace("\"",""), XSDDatatype.XSDstring)));
     }
 
     public Rule IriRef() {
