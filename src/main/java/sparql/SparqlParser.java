@@ -25,7 +25,9 @@ import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Node_URI;
 import org.apache.jena.sparql.core.Var;
+import org.apache.jena.sparql.expr.*;
 import org.apache.jena.sparql.syntax.*;
+import org.apache.jena.sparql.util.ExprUtils;
 import org.parboiled.BaseParser;
 import org.parboiled.Rule;
 import org.parboiled.annotations.BuildParseTree;
@@ -194,7 +196,11 @@ public class SparqlParser extends BaseParser<Object> {
     }
 
     public Rule Filter() {
-        return Sequence(FILTER(), Constraint());
+        return Sequence(FILTER(), Constraint(), addFilterElement());
+    }
+
+    public boolean addFilterElement() {
+        return push(new ElementFilter((Expr) pop()));
     }
 
     public Rule Constraint() {
@@ -319,12 +325,12 @@ public class SparqlParser extends BaseParser<Object> {
 
     public Rule ConditionalOrExpression() {
         return Sequence(ConditionalAndExpression(), ZeroOrMore(Sequence(OR(),
-                ConditionalAndExpression())));
+                ConditionalAndExpression()), push(new E_LogicalOr((Expr) pop(), (Expr) pop()))));
     }
 
     public Rule ConditionalAndExpression() {
         return Sequence(ValueLogical(), ZeroOrMore(Sequence(AND(),
-                ValueLogical())));
+                ValueLogical(), push(new E_LogicalAnd((Expr) pop(), (Expr) pop())))));
     }
 
     public Rule ValueLogical() {
@@ -333,12 +339,12 @@ public class SparqlParser extends BaseParser<Object> {
 
     public Rule RelationalExpression() {
         return Sequence(NumericExpression(), Optional(FirstOf(//
-                Sequence(EQUAL(), NumericExpression()), //
-                Sequence(NOT_EQUAL(), NumericExpression()), //
-                Sequence(LESS(), NumericExpression()), //
-                Sequence(GREATER(), NumericExpression()), //
-                Sequence(LESS_EQUAL(), NumericExpression()), //
-                Sequence(GREATER_EQUAL(), NumericExpression()) //
+                Sequence(EQUAL(), NumericExpression(), swap(), push(new E_Equals((Expr) pop(), (Expr) pop()))), //
+                Sequence(NOT_EQUAL(), NumericExpression(), swap(), push(new E_NotEquals((Expr) pop(), (Expr) pop()))), //
+                Sequence(LESS(), NumericExpression(), swap(), push(new E_LessThan((Expr) pop(), (Expr) pop()))), //
+                Sequence(GREATER(), NumericExpression(), swap(), push(new E_GreaterThan((Expr) pop(), (Expr) pop()))), //
+                Sequence(LESS_EQUAL(), NumericExpression(), swap(), push(new E_LessThanOrEqual((Expr) pop(), (Expr) pop()))), //
+                Sequence(GREATER_EQUAL(), NumericExpression(), swap(), push(new E_GreaterThanOrEqual((Expr) pop(), (Expr) pop()))) //
                 ) //
         ));
     }
@@ -350,16 +356,18 @@ public class SparqlParser extends BaseParser<Object> {
     public Rule AdditiveExpression() {
         return Sequence(MultiplicativeExpression(), //
                 ZeroOrMore(FirstOf(
-                        Sequence(PLUS(), MultiplicativeExpression()), //
-                        Sequence(MINUS(), MultiplicativeExpression()), //
-                        NumericLiteralPositive(), NumericLiteralNegative()) //
-                ));
+                        Sequence(PLUS(), MultiplicativeExpression(),
+                                push(new E_Add((Expr) pop(), (Expr) pop()))), //
+                        Sequence(MINUS(), MultiplicativeExpression()//TODO DOUBLE_NEGATIVE
+                                , swap(),
+                                push(new E_Subtract((Expr) pop(), (Expr) pop()))))));
     }
 
     public Rule MultiplicativeExpression() {
         return Sequence(UnaryExpression(), ZeroOrMore(FirstOf(Sequence(
-                ASTERISK(), UnaryExpression()), Sequence(DIVIDE(),
-                UnaryExpression()))));
+                ASTERISK(), UnaryExpression(),
+                push(new E_Multiply((Expr) pop(), (Expr) pop()))), Sequence(DIVIDE(),
+                UnaryExpression(), swap(), push(new E_Divide((Expr) pop(), (Expr) pop()))))));
     }
 
     public Rule UnaryExpression() {
@@ -370,8 +378,8 @@ public class SparqlParser extends BaseParser<Object> {
 
     public Rule PrimaryExpression() {
         return FirstOf(BrackettedExpression(), BuiltInCall(),
-                IriRefOrFunction(), RdfLiteral(), NumericLiteral(),
-                BooleanLiteral(), Var());
+                Sequence(IriRefOrFunction(), asExpr()), Sequence(RdfLiteral(), asExpr()), Sequence(NumericLiteral(), asExpr()),
+                Sequence(BooleanLiteral(), asExpr()), Sequence(Var(), asExpr()));
     }
 
     public Rule BrackettedExpression() {
@@ -380,18 +388,19 @@ public class SparqlParser extends BaseParser<Object> {
 
     public Rule BuiltInCall() {
         return FirstOf(
-                Sequence(STR(), OPEN_BRACE(), Expression(), CLOSE_BRACE()),
-                Sequence(LANG(), OPEN_BRACE(), Expression(), CLOSE_BRACE()),
+                //TODO verify is the are all
+                Sequence(STR(), OPEN_BRACE(), Expression(), push(new E_Str((Expr) pop())), CLOSE_BRACE()),
+                Sequence(LANG(), OPEN_BRACE(), Expression(), push(new E_Lang((Expr) pop())), CLOSE_BRACE()),
                 Sequence(LANGMATCHES(), OPEN_BRACE(), Expression(), COMMA(),
-                        Expression(), CLOSE_BRACE()),
-                Sequence(DATATYPE(), OPEN_BRACE(), Expression(), CLOSE_BRACE()),
-                Sequence(BOUND(), OPEN_BRACE(), Var(), CLOSE_BRACE()),
+                        Expression(), push(new E_LangMatches((Expr) pop(), (Expr) pop())), CLOSE_BRACE()),
+                Sequence(DATATYPE(), OPEN_BRACE(), Expression(), push(new E_Datatype((Expr) pop())), CLOSE_BRACE()),
+                Sequence(BOUND(), OPEN_BRACE(), Var(), push(new E_Bound(new ExprVar((String) pop()))), CLOSE_BRACE()),
                 Sequence(SAMETERM(), OPEN_BRACE(), Expression(), COMMA(),
-                        Expression(), CLOSE_BRACE()),
-                Sequence(ISIRI(), OPEN_BRACE(), Expression(), CLOSE_BRACE()),
-                Sequence(ISURI(), OPEN_BRACE(), Expression(), CLOSE_BRACE()),
-                Sequence(ISBLANK(), OPEN_BRACE(), Expression(), CLOSE_BRACE()),
-                Sequence(ISLITERAL(), OPEN_BRACE(), Expression(), CLOSE_BRACE()),
+                        Expression(), push(new E_SameTerm((Expr) pop(), (Expr) pop())), CLOSE_BRACE()),
+                Sequence(ISIRI(), OPEN_BRACE(), Expression(), push(new E_IsIRI((Expr) pop())), CLOSE_BRACE()),
+                Sequence(ISURI(), OPEN_BRACE(), Expression(), push(new E_IsURI((Expr) pop())), CLOSE_BRACE()),
+                Sequence(ISBLANK(), OPEN_BRACE(), Expression(), push(new E_IsBlank((Expr) pop())), CLOSE_BRACE()),
+                Sequence(ISLITERAL(), OPEN_BRACE(), Expression(), push(new E_IsLiteral((Expr) pop())), CLOSE_BRACE()),
                 RegexExpression());
     }
 
@@ -417,6 +426,10 @@ public class SparqlParser extends BaseParser<Object> {
 
     public Rule NumericLiteralUnsigned() {
         return FirstOf(DOUBLE(), DECIMAL(), INTEGER());
+    }
+
+    public boolean asExpr() {
+        return push(ExprUtils.nodeToExpr((Node) pop()));
     }
 
     public Rule NumericLiteralPositive() {
