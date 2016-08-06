@@ -41,6 +41,12 @@ import org.parboiled.annotations.BuildParseTree;
 @BuildParseTree
 public class SparqlParser extends BaseParser<Object> {
     // <Parser>
+
+    public Query getQuery() {
+        int size = getContext().getValueStack().size();
+        return (Query) peek(size > 0 ? size - 1 : 0);
+    }
+
     public Rule Query() {
         return Sequence(push(new Query()), WS(), Prologue(), SelectQuery()
                 , EOI);   //ConstructQuery(), DescribeQuery(), AskQuery()
@@ -51,11 +57,15 @@ public class SparqlParser extends BaseParser<Object> {
     }
 
     public Rule BaseDecl() {
-        return Sequence(BASE(), IRI_REF());
+        return Sequence(BASE(), IRI_REF(), pushQuery(((Query) pop(1)).setBaseURI(match())));
     }
 
     public Rule PrefixDecl() {
-        return Sequence(PREFIX(), PNAME_NS(), IRI_REF());
+        return Sequence(PrefixBuild(), pushQuery(((Query) pop(1)).setPrefix((Prefix) pop())));
+    }
+
+    public Rule PrefixBuild() {
+        return Sequence(PREFIX(), PNAME_NS(), push(new Prefix(match())), IRI_REF(), push(((Prefix) pop()).setURI(match())));
     }
 
     public Rule SelectQuery() {
@@ -150,7 +160,14 @@ public class SparqlParser extends BaseParser<Object> {
     }
 
     public boolean addSubElement() {
+        debug("addSubElement");
         ((ElementGroup) peek(1)).addElement(popElement());
+        return true;
+    }
+
+    public boolean addSubElement2() {
+        debug("addSubElement2");
+        ((ElementGroup) peek(2)).addElement(popElement());
         return true;
     }
 
@@ -163,15 +180,20 @@ public class SparqlParser extends BaseParser<Object> {
     }
 
     public boolean addUnionElement() {
+        debug("addUnionElement");
         ((ElementUnion) peek(1)).addElement(popElement());
         return true;
     }
 
+    public boolean addNamedGraphElement() {
+        debug("addNamedGraphElement");
+        return push(new ElementNamedGraph((Node) pop(), popElement()));
+    }
 
     public Rule TriplesBlock() {
         debug("TriplesBlock");
         return Sequence(TriplesSameSubject(), Optional(Sequence(DOT(),
-                Optional(TriplesBlock()))));
+                Optional(Sequence(swap(), TriplesBlock(), addSubElement(), swap())))));
     }
 
     public Rule GraphPatternNotTriples() {
@@ -187,7 +209,7 @@ public class SparqlParser extends BaseParser<Object> {
 
 
     public Rule GraphGraphPattern() {
-        return Sequence(GRAPH(), VarOrIRIref(), GroupGraphPattern());
+        return Sequence(GRAPH(), VarOrIRIref(), GroupGraphPattern(), swap(), addNamedGraphElement());
     }
 
     public Rule GroupOrUnionGraphPattern() {
@@ -456,7 +478,12 @@ public class SparqlParser extends BaseParser<Object> {
     }
 
     public Rule PrefixedName() {
-        return FirstOf(PNAME_LN(), PNAME_NS());
+        return FirstOf(Sequence(PNAME_LN(), resolvePNAME(match())), Sequence(PNAME_NS(), resolvePNAME(match())));
+    }
+
+    public boolean resolvePNAME(String match) {
+        String uri = getQuery().getQ().getPrologue().expandPrefixedName(match.trim());
+        return push(NodeFactory.createURI(uri));
     }
 
     public Rule BlankNode() {

@@ -5,7 +5,6 @@ import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Node_URI;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.sparql.syntax.Element;
-import org.apache.jena.sparql.syntax.ElementGroup;
 import org.apache.jena.sparql.syntax.TripleCollectorMark;
 
 /**
@@ -74,7 +73,7 @@ public class Query implements ElementBuilder {
     }
 
     public Query addElement(Element sub) {
-            q.setQueryPattern(sub);
+        q.setQueryPattern(sub);
         return this;
     }
 
@@ -87,4 +86,14 @@ public class Query implements ElementBuilder {
         return acc;
     }
 
+    public Query setBaseURI(String match) {
+        q.getPrologue().setBaseURI(match);
+        return this;
+    }
+
+    public Query setPrefix(Prefix pop) {
+        System.out.println(pop.toString());
+        q.getPrologue().setPrefix(pop.getPrefix(), pop.getUri());
+        return this;
+    }
 }

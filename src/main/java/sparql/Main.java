@@ -25,6 +25,7 @@ import org.parboiled.support.ParsingResult;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Map;
 
 public class Main {
 
@@ -46,6 +47,7 @@ public class Main {
     }
 
     private static void print(org.apache.jena.query.Query q) {
+        System.out.println("---");
         System.out.println(q.getGraphURIs());
         System.out.println(q.getQueryType());
         System.out.println(q.getNamedGraphURIs());
@@ -58,6 +60,15 @@ public class Main {
 
         Element queryPattern = q.getQueryPattern();
         System.out.println("queryPattern " + queryPattern);
+
+        System.out.println("PREFIXES");
+
+        Map<String, String> nsPrefixMap = q.getPrologue().getPrefixMapping().getNsPrefixMap();
+        for (String prefix : nsPrefixMap.keySet()) {
+            String uri = nsPrefixMap.get(prefix);
+            System.out.println(prefix + ":" + uri);
+        }
+        System.out.println("---");
 
     }
 
