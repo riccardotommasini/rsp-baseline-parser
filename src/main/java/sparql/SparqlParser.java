@@ -25,9 +25,7 @@ import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Node_URI;
 import org.apache.jena.sparql.core.Var;
-import org.apache.jena.sparql.syntax.Element;
-import org.apache.jena.sparql.syntax.Template;
-import org.apache.jena.sparql.syntax.TripleCollectorBGP;
+import org.apache.jena.sparql.syntax.*;
 import org.parboiled.BaseParser;
 import org.parboiled.Rule;
 import org.parboiled.annotations.BuildParseTree;
@@ -102,7 +100,11 @@ public class SparqlParser extends BaseParser<Object> {
 
     public Rule WhereClause() {
         debug("WhereClause");
-        return Sequence(Optional(WHERE()), GroupGraphPattern());
+        return Sequence(Optional(WHERE()), GroupGraphPattern(), addElementToQuery());
+    }
+
+    public boolean addElementToQuery() {
+        return push(((Query) pop(1)).addElement(popElement()));
     }
 
     public Rule SolutionModifier() {
@@ -139,14 +141,28 @@ public class SparqlParser extends BaseParser<Object> {
 
     public Rule GroupGraphPatternSub() {
         debug("GroupGraphPatternSub");
-        return Sequence(Optional(Sequence(TriplesBlock(), addElement())),
-                ZeroOrMore(Sequence(
-                        Sequence(GraphPatternNotTriples(), addElement()),
-                        Optional(DOT()), Optional(Sequence(TriplesBlock(), addElement())))));
+        return Sequence(push(new ElementGroup()), Optional(Sequence(TriplesBlock(), addSubElement())),
+                ZeroOrMore(
+                        Sequence(Sequence(GraphPatternNotTriples(), addSubElement()),
+                                Optional(DOT()), Optional(Sequence(TriplesBlock(), addSubElement())))));
     }
 
-    public boolean addElement() {
-        return pushQuery(((Query) pop(1)).addElement(popElement()));
+    public boolean addSubElement() {
+        ((ElementGroup) peek(1)).addElement(popElement());
+        return true;
+    }
+
+    public boolean addOptionalElement() {
+        return push(new ElementOptional(popElement()));
+    }
+
+    public boolean createUnionElement() {
+        return push(new ElementUnion(popElement()));
+    }
+
+    public boolean addUnionElement() {
+        ((ElementUnion) peek(1)).addElement(popElement());
+        return true;
     }
 
 
@@ -162,16 +178,19 @@ public class SparqlParser extends BaseParser<Object> {
     }
 
     public Rule OptionalGraphPattern() {
-        return Sequence(OPTIONAL(), GroupGraphPattern());
+        debug("Optional");
+        return Sequence(OPTIONAL(), GroupGraphPattern(),
+                addOptionalElement());
     }
+
 
     public Rule GraphGraphPattern() {
         return Sequence(GRAPH(), VarOrIRIref(), GroupGraphPattern());
     }
 
     public Rule GroupOrUnionGraphPattern() {
-        return Sequence(GroupGraphPattern(), ZeroOrMore(Sequence(UNION(),
-                GroupGraphPattern())));
+        return Sequence(GroupGraphPattern(), createUnionElement(), ZeroOrMore(Sequence(UNION(),
+                GroupGraphPattern(), addUnionElement())));
     }
 
     public Rule Filter() {
@@ -842,7 +861,7 @@ public class SparqlParser extends BaseParser<Object> {
 
 
     public Element popElement() {
-        return (Element) pop(0);
+        return ((Element) pop(0));
     }
 
     public Rule COMMA() {

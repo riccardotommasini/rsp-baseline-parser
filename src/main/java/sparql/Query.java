@@ -1,25 +1,24 @@
 package sparql;
 
 import lombok.Data;
+import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Node_URI;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.sparql.syntax.Element;
 import org.apache.jena.sparql.syntax.ElementGroup;
 import org.apache.jena.sparql.syntax.TripleCollectorMark;
-import org.apache.jena.graph.Node;
+
 /**
  * Created by Riccardo on 05/08/16.
  */
 @Data
-public class Query {
+public class Query implements ElementBuilder {
 
-    private ElementGroup where;
     private org.apache.jena.query.Query q;
 
 
     public Query() {
         this.q = new org.apache.jena.query.Query();
-        this.q.setQueryPattern(this.where = new ElementGroup());
     }
 
     public Query setSelectQuery() {
@@ -74,11 +73,13 @@ public class Query {
         return this;
     }
 
-    Element elm = null;
-
     public Query addElement(Element sub) {
-        ((ElementGroup) q.getQueryPattern()).addElement(sub);
+            q.setQueryPattern(sub);
         return this;
+    }
+
+    public Element getElement() {
+        return q.getQueryPattern();
     }
 
     public TripleCollectorMark insert(TripleCollectorMark acc, Triple t) {
