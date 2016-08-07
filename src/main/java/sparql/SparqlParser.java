@@ -49,6 +49,20 @@ public class SparqlParser extends BaseParser<Object> {
         return (Query) peek(size > 0 ? size - 1 : 0);
     }
 
+    public Query popQuery() {
+        int size = getContext().getValueStack().size();
+        return (Query) pop(size > 0 ? size - 1 : 0);
+    }
+
+    public boolean pushQuery(Query q) {
+        return push(0, q);
+    }
+
+
+    public Element popElement() {
+        return ((Element) pop(0));
+    }
+
     public Rule Query() {
         return Sequence(push(new Query()), WS(), Prologue(), SelectQuery()
                 , EOI);   //ConstructQuery(), DescribeQuery(), AskQuery()
@@ -72,22 +86,42 @@ public class SparqlParser extends BaseParser<Object> {
 
     public Rule SelectQuery() {
         debug("SelectQuery");
-        return Sequence(SELECT(), Optional(FirstOf(DISTINCT(),
-                REDUCED())), FirstOf(
-                OneOrMore(Sequence(Var(), pushQuery(((Query) pop(1)).addVariable((Node) pop())))), ASTERISK()),
-                ZeroOrMore(DatasetClause()), WhereClause(), SolutionModifier()); //TODO FirstOf(WhereClause, Subselect())
+        return Sequence(
+                Sequence(SELECT(), pushQuery(popQuery().setSelectQuery())),
+                Optional(
+                        FirstOf(
+                                Sequence(DISTINCT(), pushQuery(popQuery().setDistinct())),
+                                Sequence(REDUCED(), pushQuery(popQuery().setReduced())))),
+                FirstOf(Sequence(ASTERISK(), StarQuery()),
+                        OneOrMore(
+                                FirstOf(
+                                        Sequence(Var(), pushQuery(((Query) pop(1)).addResultVar((Node) pop()))),
+                                        Sequence(OPEN_BRACE(), Expression(), AS(), Var(), CLOSE_BRACE(),
+                                                pushQuery(((Query) pop(2)).addResultVar((Node) pop(), (Expr) pop())))))
+
+
+                ),
+                ZeroOrMore(DatasetClause()),
+                WhereClause(),
+                SolutionModifiers()); //TODO FirstOf(WhereClause, Subselect())
+    }
+
+    public boolean StarQuery() {
+        debug("StarQuery");
+        getQuery().setQueryStar();
+        return true;
     }
 
     public Rule ConstructQuery() {
         debug("ConstructQuery");
         return Sequence(CONSTRUCT(), ConstructTemplate(),
-                ZeroOrMore(DatasetClause()), WhereClause(), SolutionModifier());
+                ZeroOrMore(DatasetClause()), WhereClause(), SolutionModifiers());
     }
 
     public Rule DescribeQuery() {
         return Sequence(DESCRIBE(), FirstOf(OneOrMore(VarOrIRIref()),
                 ASTERISK()), ZeroOrMore(DatasetClause()),
-                Optional(WhereClause()), SolutionModifier());
+                Optional(WhereClause()), SolutionModifiers());
     }
 
     public Rule AskQuery() {
@@ -121,9 +155,10 @@ public class SparqlParser extends BaseParser<Object> {
         return push(((Query) pop(1)).addElement(popElement()));
     }
 
-    public Rule SolutionModifier() {
-        return Sequence(Optional(OrderClause()), Optional(LimitOffsetClauses()));
+    public Rule SolutionModifiers() {
+        return Sequence(Optional(GroupClause()), Optional(OrderClause()), Optional(LimitOffsetClauses()));
     }
+
 
     public Rule LimitOffsetClauses() {
         return FirstOf(Sequence(LimitClause(), Optional(OffsetClause())),
@@ -143,6 +178,29 @@ public class SparqlParser extends BaseParser<Object> {
     public Rule LimitClause() {
         return Sequence(LIMIT(), INTEGER(), pushQuery(popQuery().setLimit(match())));
     }
+
+    public Rule GroupClause() {
+        debug("GroupClause");
+        return Sequence(GROUP(), BY(), OneOrMore(GroupCondition()));
+    }
+
+    public Rule GROUP() {
+        return StringIgnoreCaseWS("GROUP");
+    }
+
+    public Rule GroupCondition() {
+        return FirstOf(Sequence(Var(), pushQuery(((Query) pop(1)).addGroupBy((Var) pop()))),
+                Sequence(BuiltInCall(), pushQuery(((Query) pop(1)).addGroupBy((Expr) pop()))),
+                Sequence(FunctionCall(), pushQuery(((Query) pop(1)).addGroupBy((Expr) pop()))),
+                Sequence(OPEN_BRACE(), Expression(), AS(), Var(), CLOSE_BRACE(), pushQuery(((Query) pop(2)).addGroupBy((Var) pop(), (Expr) pop())))
+        );
+    }
+
+    public Rule AS() {
+        debug("AS");
+        return StringIgnoreCaseWS("AS");
+    }
+
 
     public Rule OffsetClause() {
         return Sequence(OFFSET(), INTEGER(), pushQuery(popQuery().setOffset(match())));
@@ -350,8 +408,7 @@ public class SparqlParser extends BaseParser<Object> {
     }
 
     public Rule Var() {
-        debug("Var");
-        return FirstOf(VAR1(), VAR2());
+        return Sequence(FirstOf(VAR1(), VAR2()), allocVariable(match()));
     }
 
     public Rule GraphTerm() {
@@ -467,11 +524,15 @@ public class SparqlParser extends BaseParser<Object> {
                 NumericLiteralNegative());
     }
 
+    public String trimMatch() {
+        return match().trim();
+    }
+
     public Rule NumericLiteralUnsigned() {
         return FirstOf(
-                Sequence(DOUBLE(), push(NodeFactory.createLiteral(match(), XSDDatatype.XSDdouble))),
-                Sequence(DECIMAL(), push(NodeFactory.createLiteral(match(), XSDDatatype.XSDdecimal))),
-                Sequence(INTEGER(), push(NodeFactory.createLiteral(match(), XSDDatatype.XSDinteger))));
+                Sequence(DOUBLE(), push(NodeFactory.createLiteral(trimMatch(), XSDDatatype.XSDdouble))),
+                Sequence(DECIMAL(), push(NodeFactory.createLiteral(trimMatch(), XSDDatatype.XSDdecimal))),
+                Sequence(INTEGER(), push(NodeFactory.createLiteral(trimMatch(), XSDDatatype.XSDinteger))));
     }
 
     public boolean asExpr() {
@@ -480,20 +541,20 @@ public class SparqlParser extends BaseParser<Object> {
 
     public Rule NumericLiteralPositive() {
         return FirstOf(
-                Sequence(DOUBLE_POSITIVE(), push(NodeFactory.createLiteral(match(), XSDDatatype.XSDdouble))),
-                Sequence(DECIMAL_POSITIVE(), push(NodeFactory.createLiteral(match(), XSDDatatype.XSDdecimal))),
-                Sequence(INTEGER_POSITIVE(), push(NodeFactory.createLiteral(match(), XSDDatatype.XSDinteger))));
+                Sequence(DOUBLE_POSITIVE(), push(NodeFactory.createLiteral(trimMatch(), XSDDatatype.XSDdouble))),
+                Sequence(DECIMAL_POSITIVE(), push(NodeFactory.createLiteral(trimMatch(), XSDDatatype.XSDdecimal))),
+                Sequence(INTEGER_POSITIVE(), push(NodeFactory.createLiteral(trimMatch(), XSDDatatype.XSDinteger))));
     }
 
     public Rule NumericLiteralNegative() {
         return FirstOf(
-                Sequence(DOUBLE_NEGATIVE(), push(NodeFactory.createLiteral(match(), XSDDatatype.XSDdouble))),
-                Sequence(DECIMAL_NEGATIVE(), push(NodeFactory.createLiteral(match(), XSDDatatype.XSDdecimal))),
-                Sequence(INTEGER_NEGATIVE(), push(NodeFactory.createLiteral(match(), XSDDatatype.XSDinteger))));
+                Sequence(DOUBLE_NEGATIVE(), push(NodeFactory.createLiteral(trimMatch(), XSDDatatype.XSDdouble))),
+                Sequence(DECIMAL_NEGATIVE(), push(NodeFactory.createLiteral(trimMatch(), XSDDatatype.XSDdecimal))),
+                Sequence(INTEGER_NEGATIVE(), push(NodeFactory.createLiteral(trimMatch(), XSDDatatype.XSDinteger))));
     }
 
     public Rule BooleanLiteral() {
-        return Sequence(FirstOf(TRUE(), FALSE()), push(NodeFactory.createLiteralByValue(match(), XSDDatatype.XSDboolean)));
+        return Sequence(FirstOf(TRUE(), FALSE()), push(NodeFactory.createLiteralByValue(trimMatch(), XSDDatatype.XSDboolean)));
     }
 
     public Rule String() {
@@ -547,11 +608,11 @@ public class SparqlParser extends BaseParser<Object> {
     }
 
     public Rule SELECT() {
-        return Sequence(pushQuery(popQuery().setSelectQuery()), StringIgnoreCaseWS("SELECT"));
+        return StringIgnoreCaseWS("SELECT");
     }
 
     public Rule DISTINCT() {
-        return Sequence(StringIgnoreCaseWS("DISTINCT"), pushQuery(popQuery().setDistinct(match())));
+        return StringIgnoreCaseWS("DISTINCT");
     }
 
     public Rule REDUCED() {
@@ -691,18 +752,15 @@ public class SparqlParser extends BaseParser<Object> {
     }
 
     public Rule VAR1() {
-        debug("VAR1");
-        return Sequence('?', VARNAME(), isPush(match()), WS());
+        return Sequence('?', VARNAME(), WS());
     }
 
-    public boolean isPush(String s) {
-        System.out.println(s);
-        return push(Var.alloc(s.trim()));
+    public boolean allocVariable(String s) {
+        return push(Var.alloc(s.trim().replace("?", "").replace("$", "")));
     }
 
     public Rule VAR2() {
-        debug("VAR2");
-        return Sequence('$', VARNAME(), isPush(match()), WS());
+        return Sequence('$', VARNAME(), WS());
     }
 
     public Rule LANGTAG() {
@@ -908,27 +966,7 @@ public class SparqlParser extends BaseParser<Object> {
     }
 
     public Rule ASTERISK() {
-        return Sequence(ChWS('*'), pushQuery(popQuery().setQueryStar()));
-    }
-
-    public Query popQuery() {
-        debug("popQuery");
-        return (Query) pop(0);
-    }
-
-    public boolean pushQuery(Query q) {
-        debug("pushQuery");
-        return push(0, q);
-    }
-
-    public Query peekQuery() {
-        debug("peekQuery");
-        return (Query) peek(0);
-    }
-
-
-    public Element popElement() {
-        return ((Element) pop(0));
+        return ChWS('*');
     }
 
     public Rule COMMA() {

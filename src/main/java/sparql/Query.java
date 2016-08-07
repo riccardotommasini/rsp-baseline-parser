@@ -4,6 +4,7 @@ import lombok.Data;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Node_URI;
 import org.apache.jena.graph.Triple;
+import org.apache.jena.sparql.core.Var;
 import org.apache.jena.sparql.expr.Expr;
 import org.apache.jena.sparql.expr.aggregate.Aggregator;
 import org.apache.jena.sparql.syntax.Element;
@@ -45,8 +46,8 @@ public class Query {
         return this;
     }
 
-    public Query setDistinct(String match) {
-        q.setDistinct("DISTINCT".equals(match));
+    public Query setDistinct() {
+        q.setDistinct(true);
         return this;
     }
 
@@ -54,11 +55,6 @@ public class Query {
     @Override
     public String toString() {
         return q.toString();
-    }
-
-    public Query addVariable(Node v) {
-        q.addResultVar(v.getName());
-        return this;
     }
 
     public Query setQueryStar() {
@@ -132,6 +128,39 @@ public class Query {
 
     public Query setOffset(String offset) {
         q.setOffset(Integer.parseInt(offset.trim()));
+        return this;
+    }
+
+    public Query addGroupBy(Expr pop) {
+        q.addGroupBy((Var) null, pop);
+        return this;
+    }
+
+    public Query addGroupBy(Var v, Expr pop) {
+        q.addGroupBy(v, pop);
+        return this;
+    }
+
+    public Query addGroupBy(Var v) {
+        System.err.println("Add Group By " + v.toString());
+        q.addGroupBy(v);
+        return this;
+    }
+
+    public Query setReduced() {
+        q.setReduced(true);
+        return this;
+    }
+
+    public Query addResultVar(Node pop, Expr pop1) {
+        q.addResultVar(pop, pop1);
+        q.setQueryResultStar(false);
+        return this;
+    }
+
+    public Query addResultVar(Node pop) {
+        q.addResultVar(pop);
+        q.setQueryResultStar(false);
         return this;
     }
 }

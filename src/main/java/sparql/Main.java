@@ -17,7 +17,12 @@ package sparql;/*
 import org.apache.commons.io.FileUtils;
 import org.apache.jena.query.QueryFactory;
 import org.apache.jena.query.SortCondition;
+import org.apache.jena.query.Syntax;
+import org.apache.jena.riot.system.IRIResolver;
 import org.apache.jena.sparql.core.Var;
+import org.apache.jena.sparql.core.VarExprList;
+import org.apache.jena.sparql.lang.SPARQLParser;
+import org.apache.jena.sparql.lang.SyntaxVarScope;
 import org.apache.jena.sparql.syntax.Element;
 import org.parboiled.Node;
 import org.parboiled.Parboiled;
@@ -32,18 +37,26 @@ import java.util.Map;
 public class Main {
 
     public static void main(String[] args) throws IOException {
-        SparqlParser parser = Parboiled.createParser(SparqlParser.class);
 
         String input = getInput();
-
+        SparqlParser parser = Parboiled.createParser(SparqlParser.class);
         ParsingResult<Query> result = new ReportingParseRunner(parser.Query()).run(input);
         Node<Query> n = result.parseTreeRoot.getChildren().get(0);
         org.apache.jena.query.Query q = n.getValue().getQ();
 
         print(q);
+        System.out.println("Check valid");
+        SyntaxVarScope.check(q);
 
         //jena
-        print(QueryFactory.create(input));
+        org.apache.jena.query.Query query = new org.apache.jena.query.Query();
+
+        SPARQLParser jenaParser = SPARQLParser.createParser(Syntax.defaultQuerySyntax);
+        IRIResolver resolver = IRIResolver.create();
+        query.setResolver(resolver);
+        org.apache.jena.query.Query parsed = jenaParser.parse(query, input);
+
+        print(parsed);
 
 
     }
@@ -53,11 +66,12 @@ public class Main {
         System.out.println(q.getGraphURIs());
         System.out.println(q.getQueryType());
         System.out.println(q.getNamedGraphURIs());
+
         for (Var v : q.getProjectVars()) {
-            System.out.println("PV " + v.toString());
+            System.out.println("Project Var " + v.toString());
         }
         for (String v : q.getResultVars()) {
-            System.out.println("RV " + v);
+            System.out.println("Result Var " + v);
         }
 
         Element queryPattern = q.getQueryPattern();
@@ -81,6 +95,15 @@ public class Main {
 
         System.out.println("LIMIT " + q.getLimit());
         System.out.println("OFFSET " + q.getOffset());
+
+        VarExprList groupBy = q.getGroupBy();
+
+        System.out.println("GROUP BY");
+        List<Var> vars = groupBy.getVars();
+        for (Var v : vars) {
+            System.out.println("VAR " + v + " EXPR " +
+                    groupBy.getExpr(v));
+        }
 
         System.out.println("---");
 
