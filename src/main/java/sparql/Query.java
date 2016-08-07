@@ -13,10 +13,12 @@ import org.apache.jena.sparql.syntax.TripleCollectorMark;
  * Created by Riccardo on 05/08/16.
  */
 @Data
-public class Query implements ElementBuilder {
+public class Query {
 
     private org.apache.jena.query.Query q;
 
+    private int orderDescending = org.apache.jena.query.Query.ORDER_DESCENDING;
+    private int orderAscending = org.apache.jena.query.Query.ORDER_ASCENDING;
 
     public Query() {
         this.q = new org.apache.jena.query.Query();
@@ -102,5 +104,24 @@ public class Query implements ElementBuilder {
     public Expr allocAggregate(Aggregator custom) {
         return q.allocAggregate(custom);
 
+    }
+
+    public Query addOrderBy(Object n) {
+        return (n instanceof Node) ? addOrderBy((Node) n) : addOrderBy((Expr) n);
+    }
+
+    public Query addOrderBy(Node n) {
+        q.addOrderBy(n, org.apache.jena.query.Query.ORDER_DEFAULT);
+        return this;
+    }
+
+    public Query addOrderBy(Expr n) {
+        q.addOrderBy(n, org.apache.jena.query.Query.ORDER_DEFAULT);
+        return this;
+    }
+
+    public Query addOrderBy(Expr pop, String s) {
+        q.addOrderBy(pop, "DESC".equals(s) ? orderDescending : orderAscending);
+        return this;
     }
 }

@@ -16,6 +16,7 @@ package sparql;/*
 
 import org.apache.commons.io.FileUtils;
 import org.apache.jena.query.QueryFactory;
+import org.apache.jena.query.SortCondition;
 import org.apache.jena.sparql.core.Var;
 import org.apache.jena.sparql.syntax.Element;
 import org.parboiled.Node;
@@ -25,6 +26,7 @@ import org.parboiled.support.ParsingResult;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 
 public class Main {
@@ -67,6 +69,12 @@ public class Main {
         for (String prefix : nsPrefixMap.keySet()) {
             String uri = nsPrefixMap.get(prefix);
             System.out.println(prefix + ":" + uri);
+        }
+
+        List<SortCondition> orderBy = q.getOrderBy();
+        for (SortCondition sc : orderBy) {
+            System.out.println(sc.getExpression().toString() + "  " +
+                    ((org.apache.jena.query.Query.ORDER_DESCENDING == sc.direction) ? "DESC" : "ASC"));
         }
         System.out.println("---");
 

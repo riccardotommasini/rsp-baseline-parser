@@ -136,8 +136,8 @@ public class SparqlParser extends BaseParser<Object> {
 
     public Rule OrderCondition() {
         return FirstOf(
-                Sequence(FirstOf(ASC(), DESC()), BrackettedExpression()),
-                FirstOf(Constraint(), Var()));
+                Sequence(FirstOf(ASC(), DESC()), BrackettedExpression(), pushQuery(((Query) pop(2)).addOrderBy((Expr) pop(), pop().toString()))),
+                Sequence(FirstOf(Constraint(), Var()), pushQuery(((Query) pop(1)).addOrderBy(pop()))));
     }
 
     public Rule LimitClause() {
@@ -585,11 +585,11 @@ public class SparqlParser extends BaseParser<Object> {
     }
 
     public Rule ASC() {
-        return StringIgnoreCaseWS("ASC");
+        return Sequence(StringIgnoreCaseWS("ASC"), push("ASC"));
     }
 
     public Rule DESC() {
-        return StringIgnoreCaseWS("DESC");
+        return Sequence(StringIgnoreCaseWS("DESC"), push("DESC"));
     }
 
     public Rule LIMIT() {
