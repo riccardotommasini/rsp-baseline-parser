@@ -46,14 +46,31 @@ import org.parboiled.annotations.BuildParseTree;
 public class SparqlParser extends BaseParser<Object> {
     // <Parser>
 
-    public Query getQuery() {
-        int size = getContext().getValueStack().size();
-        return (Query) peek(size > 0 ? size - 1 : 0);
+    public Query getQuery(String func, int i) {
+        if (i == -1) {
+            System.out.println("Unknown index from " + func);
+            int size = getContext().getValueStack().size();
+            i = size > 0 ? size - 1 : 0;
+        }
+        System.out.println("Query get, pos " + i);
+        return (Query) peek(i);
     }
 
-    public Query popQuery() {
-        int size = getContext().getValueStack().size();
-        return (Query) pop(size > 0 ? size - 1 : 0);
+    public Query getQuery(int i) {
+        return getQuery("", i);
+    }
+
+    public Query popQuery(int i) {
+
+        if (i == -1) {
+            System.out.println("Unknown index " + i);
+            int size = getContext().getValueStack().size();
+            i = size > 0 ? size - 1 : 0;
+
+        }
+
+        System.out.println("Query pop, pos " + i);
+        return (Query) pop(i);
     }
 
     public boolean pushQuery(Query q) {
@@ -89,12 +106,20 @@ public class SparqlParser extends BaseParser<Object> {
     public Rule SelectQuery() {
         debug("SelectQuery");
         return Sequence(
-                Sequence(SELECT(), pushQuery(popQuery().setSelectQuery())),
+                SelectClause(),
+                ZeroOrMore(DatasetClause()),
+                WhereClause(),
+                SolutionModifiers());
+    }
+
+    public Rule SelectClause() {
+        debug("SelectClause");
+        return Sequence(SELECT(), pushQuery(popQuery(0).setSelectQuery()),
                 Optional(
                         FirstOf(
-                                Sequence(DISTINCT(), pushQuery(popQuery().setDistinct())),
-                                Sequence(REDUCED(), pushQuery(popQuery().setReduced())))),
-                FirstOf(Sequence(ASTERISK(), StarQuery()),
+                                Sequence(DISTINCT(), pushQuery(popQuery(0).setDistinct())),
+                                Sequence(REDUCED(), pushQuery(popQuery(0).setReduced())))),
+                FirstOf(Sequence(ASTERISK(), pushQuery(popQuery(0).setQueryStar())),
                         OneOrMore(
                                 FirstOf(
                                         Sequence(Var(), pushQuery(((Query) pop(1)).addResultVar((Node) pop()))),
@@ -102,36 +127,26 @@ public class SparqlParser extends BaseParser<Object> {
                                                 pushQuery(((Query) pop(2)).addResultVar((Node) pop(), (Expr) pop())))))
 
 
-                ),
-                ZeroOrMore(DatasetClause()),
-                WhereClause(),
-                SolutionModifiers()); //TODO FirstOf(WhereClause, Subselect())
+                ));
     }
 
-    public boolean StarQuery() {
-        debug("StarQuery");
-        getQuery().setQueryStar();
-        return true;
-    }
 
     public Rule ConstructQuery() {
-        debug("ConstructQuery");
-        return Sequence(CONSTRUCT(), ConstructTemplate(),
+        return Sequence(Sequence(CONSTRUCT(), pushQuery(popQuery(0).setConstructQuery())), ConstructTemplate(),
                 ZeroOrMore(DatasetClause()), WhereClause(), SolutionModifiers());
     }
 
     public Rule DescribeQuery() {
-        return Sequence(DESCRIBE(), FirstOf(OneOrMore(VarOrIRIref()),
+        return Sequence(Sequence(DESCRIBE(), pushQuery(popQuery(0).setDescribeQuery())), FirstOf(OneOrMore(VarOrIRIref()),
                 ASTERISK()), ZeroOrMore(DatasetClause()),
                 Optional(WhereClause()), SolutionModifiers());
     }
 
     public Rule AskQuery() {
-        return Sequence(ASK(), ZeroOrMore(DatasetClause()), WhereClause());
+        return Sequence(Sequence(ASK(), pushQuery(popQuery(0).setAskQuery())), ZeroOrMore(DatasetClause()), WhereClause());
     }
 
     public Rule DatasetClause() {
-        debug("DatasetClause");
         return Sequence(FROM(), FirstOf(DefaultGraphClause(),
                 NamedGraphClause()));
     }
@@ -149,8 +164,7 @@ public class SparqlParser extends BaseParser<Object> {
     }
 
     public Rule WhereClause() {
-        debug("WhereClause");
-        return Sequence(Optional(WHERE()), GroupGraphPattern(), addElementToQuery());
+        return Sequence(WHERE(), GroupGraphPattern(), addElementToQuery());
     }
 
     public boolean addElementToQuery() {
@@ -162,7 +176,6 @@ public class SparqlParser extends BaseParser<Object> {
     }
 
     public Rule GroupClause() {
-        debug("GroupClause");
         return Sequence(GROUP(), BY(), OneOrMore(GroupCondition()));
     }
 
@@ -176,7 +189,7 @@ public class SparqlParser extends BaseParser<Object> {
     }
 
     public Rule HavingClause() {
-        return Sequence(HAVING(), Constraint(), pushQuery(popQuery().addHavingCondition((Expr) pop())));
+        return Sequence(HAVING(), OneOrMore(Constraint(), pushQuery(popQuery(1).addHavingCondition((Expr) pop()))));
     }
 
     public Rule HAVING() {
@@ -200,17 +213,22 @@ public class SparqlParser extends BaseParser<Object> {
     }
 
     public Rule LimitClause() {
-        return Sequence(LIMIT(), INTEGER(), pushQuery(popQuery().setLimit(match())));
+        return Sequence(LIMIT(), INTEGER(), pushQuery(popQuery(0).setLimit(match())));
     }
 
     public Rule OffsetClause() {
-        return Sequence(OFFSET(), INTEGER(), pushQuery(popQuery().setOffset(match())));
+        return Sequence(OFFSET(), INTEGER(), pushQuery(popQuery(0).setOffset(match())));
     }
 
 
     public Rule GroupGraphPattern() {
         debug("GroupGraphPattern");
         return Sequence(OPEN_CURLY_BRACE(), GroupGraphPatternSub(), CLOSE_CURLY_BRACE());
+    }
+
+    public Rule SubSelect() {
+        debug("SubSelect");
+        return Sequence(OPEN_CURLY_BRACE(), push(new Query()), SelectClause(), WhereClause(), SolutionModifiers(), push(new ElementSubQuery(popQuery(0).getQ())), CLOSE_CURLY_BRACE());
     }
 
     public Rule GroupGraphPatternSub() {
@@ -260,7 +278,7 @@ public class SparqlParser extends BaseParser<Object> {
 
     public Rule GraphPatternNotTriples() {
         return FirstOf(Filter(), OptionalGraphPattern(), GroupOrUnionGraphPattern(),
-                GraphGraphPattern());
+                GraphGraphPattern(), SubSelect());
     }
 
     public Rule OptionalGraphPattern() {
@@ -280,11 +298,15 @@ public class SparqlParser extends BaseParser<Object> {
     }
 
     public Rule Filter() {
-        return Sequence(FILTER(), Constraint(), addFilterElement());
+        return Sequence(FILTER(), FilterConstraint(), addFilterElement());
     }
 
     public boolean addFilterElement() {
         return push(new ElementFilter((Expr) pop()));
+    }
+
+    public Rule FilterConstraint() {
+        return FirstOf(BrackettedExpression(), BuiltInCallNoAggregates(), FunctionCall());
     }
 
     public Rule Constraint() {
@@ -300,7 +322,7 @@ public class SparqlParser extends BaseParser<Object> {
 
     public Rule addAggregateFunctionCall() {
         return Sequence(Test((AggregateRegistry.isRegistered(((Function) peek()).getIri()))),
-                push(getQuery().allocAggregate(((Function) pop()).createCustom())));
+                push(getQuery("addAggregateFunctionCall", 1).allocAggregate(((Function) pop()).createCustom())));
     }
 
     public boolean addFunctionCall() {
@@ -485,9 +507,16 @@ public class SparqlParser extends BaseParser<Object> {
 
     public Rule BuiltInCall() {
         return FirstOf(
+                Sequence(Aggregate(), push(getQuery("BuiltInCall", 1).allocAggregate((Aggregator) pop()))),
+                BuiltInCallNoAggregates()
+        );
+    }
+
+    public Rule BuiltInCallNoAggregates() {
+        debug("BuiltInCall");
+        return FirstOf(
                 //TODO verify is the are all
 
-                Sequence(Aggregate(), push(getQuery().allocAggregate((Aggregator) pop()))),
                 Sequence(STR(), OPEN_BRACE(), Expression(), push(new E_Str((Expr) pop())), CLOSE_BRACE()),
                 Sequence(LANG(), OPEN_BRACE(), Expression(), push(new E_Lang((Expr) pop())), CLOSE_BRACE()),
                 Sequence(LANGMATCHES(), OPEN_BRACE(), Expression(), COMMA(),
@@ -535,8 +564,7 @@ public class SparqlParser extends BaseParser<Object> {
                 Max(),
                 Avg(),
                 Sample(),
-                GroupContant(),
-                SEMICOLON());
+                GroupContant());
 
     }
 
@@ -789,7 +817,7 @@ public class SparqlParser extends BaseParser<Object> {
     }
 
     public boolean resolvePNAME(String match) {
-        String uri = getQuery().getQ().getPrologue().expandPrefixedName(match.trim());
+        String uri = getQuery("BuiltInCall", -1).getQ().getPrologue().expandPrefixedName(match.trim());
         return push(NodeFactory.createURI(uri));
     }
 
@@ -838,15 +866,15 @@ public class SparqlParser extends BaseParser<Object> {
     }
 
     public Rule CONSTRUCT() {
-        return Sequence(pushQuery(popQuery().setConstructQuery()), StringIgnoreCaseWS("CONSTRUCT"));
+        return StringIgnoreCaseWS("CONSTRUCT");
     }
 
     public Rule DESCRIBE() {
-        return Sequence(pushQuery(popQuery().setDescribeQuery()), StringIgnoreCaseWS("DESCRIBE"));
+        return StringIgnoreCaseWS("DESCRIBE");
     }
 
     public Rule ASK() {
-        return Sequence(pushQuery(popQuery().setAskQuery()), StringIgnoreCaseWS("ASK"));
+        return StringIgnoreCaseWS("ASK");
 
     }
 

@@ -1,6 +1,5 @@
 package sparql;
 
-import lombok.Data;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Node_URI;
 import org.apache.jena.graph.Triple;
@@ -13,7 +12,6 @@ import org.apache.jena.sparql.syntax.TripleCollectorMark;
 /**
  * Created by Riccardo on 05/08/16.
  */
-@Data
 public class Query {
 
     private org.apache.jena.query.Query q;
@@ -30,6 +28,10 @@ public class Query {
         return this;
     }
 
+    public org.apache.jena.query.Query getQ() {
+        System.out.println("Getting q");
+        return q;
+    }
 
     public Query setConstructQuery() {
         q.setQueryConstructType();
