@@ -163,4 +163,9 @@ public class Query {
         q.setQueryResultStar(false);
         return this;
     }
+
+    public Query addHavingCondition(Expr pop) {
+        q.addHavingCondition(pop);
+        return this;
+    }
 }

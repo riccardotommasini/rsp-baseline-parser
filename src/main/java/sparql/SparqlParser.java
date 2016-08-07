@@ -27,6 +27,8 @@ import org.apache.jena.graph.Node_URI;
 import org.apache.jena.sparql.core.Var;
 import org.apache.jena.sparql.expr.*;
 import org.apache.jena.sparql.expr.aggregate.AggregateRegistry;
+import org.apache.jena.sparql.expr.aggregate.Aggregator;
+import org.apache.jena.sparql.expr.aggregate.AggregatorFactory;
 import org.apache.jena.sparql.expr.aggregate.Args;
 import org.apache.jena.sparql.syntax.*;
 import org.apache.jena.sparql.util.ExprUtils;
@@ -156,14 +158,31 @@ public class SparqlParser extends BaseParser<Object> {
     }
 
     public Rule SolutionModifiers() {
-        return Sequence(Optional(GroupClause()), Optional(OrderClause()), Optional(LimitOffsetClauses()));
+        return Sequence(Optional(GroupClause()), Optional(HavingClause()), Optional(OrderClause()), Optional(LimitOffsetClauses()));
+    }
+
+    public Rule GroupClause() {
+        debug("GroupClause");
+        return Sequence(GROUP(), BY(), OneOrMore(GroupCondition()));
     }
 
 
-    public Rule LimitOffsetClauses() {
-        return FirstOf(Sequence(LimitClause(), Optional(OffsetClause())),
-                Sequence(OffsetClause(), Optional(LimitClause())));
+    public Rule GroupCondition() {
+        return FirstOf(Sequence(Var(), pushQuery(((Query) pop(1)).addGroupBy((Var) pop()))),
+                Sequence(BuiltInCall(), pushQuery(((Query) pop(1)).addGroupBy((Expr) pop()))),
+                Sequence(FunctionCall(), pushQuery(((Query) pop(1)).addGroupBy((Expr) pop()))),
+                Sequence(OPEN_BRACE(), Expression(), AS(), Var(), CLOSE_BRACE(), pushQuery(((Query) pop(2)).addGroupBy((Var) pop(), (Expr) pop())))
+        );
     }
+
+    public Rule HavingClause() {
+        return Sequence(HAVING(), Constraint(), pushQuery(popQuery().addHavingCondition((Expr) pop())));
+    }
+
+    public Rule HAVING() {
+        return StringIgnoreCaseWS("HAVING");
+    }
+
 
     public Rule OrderClause() {
         return Sequence(ORDER(), BY(), OneOrMore(OrderCondition()));
@@ -175,36 +194,19 @@ public class SparqlParser extends BaseParser<Object> {
                 Sequence(FirstOf(Constraint(), Var()), pushQuery(((Query) pop(1)).addOrderBy(pop()))));
     }
 
+    public Rule LimitOffsetClauses() {
+        return FirstOf(Sequence(LimitClause(), Optional(OffsetClause())),
+                Sequence(OffsetClause(), Optional(LimitClause())));
+    }
+
     public Rule LimitClause() {
         return Sequence(LIMIT(), INTEGER(), pushQuery(popQuery().setLimit(match())));
     }
 
-    public Rule GroupClause() {
-        debug("GroupClause");
-        return Sequence(GROUP(), BY(), OneOrMore(GroupCondition()));
-    }
-
-    public Rule GROUP() {
-        return StringIgnoreCaseWS("GROUP");
-    }
-
-    public Rule GroupCondition() {
-        return FirstOf(Sequence(Var(), pushQuery(((Query) pop(1)).addGroupBy((Var) pop()))),
-                Sequence(BuiltInCall(), pushQuery(((Query) pop(1)).addGroupBy((Expr) pop()))),
-                Sequence(FunctionCall(), pushQuery(((Query) pop(1)).addGroupBy((Expr) pop()))),
-                Sequence(OPEN_BRACE(), Expression(), AS(), Var(), CLOSE_BRACE(), pushQuery(((Query) pop(2)).addGroupBy((Var) pop(), (Expr) pop())))
-        );
-    }
-
-    public Rule AS() {
-        debug("AS");
-        return StringIgnoreCaseWS("AS");
-    }
-
-
     public Rule OffsetClause() {
         return Sequence(OFFSET(), INTEGER(), pushQuery(popQuery().setOffset(match())));
     }
+
 
     public Rule GroupGraphPattern() {
         debug("GroupGraphPattern");
@@ -329,17 +331,9 @@ public class SparqlParser extends BaseParser<Object> {
     }
 
     public Rule TriplesSameSubject() {
-        debug("TriplesSameSubject");
-        return FirstOf(Sequence(Sequence(VarOrTerm(), push_TripleBuilder()), //building the map
-
+        return FirstOf(Sequence(Sequence(VarOrTerm(), push(new TripleBuilder((Node) pop()))), //building the map
                 PropertyListNotEmpty(), push(((TripleBuilder) pop()).build())),
-
                 Sequence(TriplesNode(), PropertyList()));
-    }
-
-    public boolean push_TripleBuilder() {
-        debug("Push TripleBuilder");
-        return push(new TripleBuilder((Node) pop()));
     }
 
     public Rule PropertyListNotEmpty() {
@@ -362,11 +356,6 @@ public class SparqlParser extends BaseParser<Object> {
         return Sequence(Object_(), push(((TripleBuilder) peek(2)).add((Node) pop(), (Node) pop())),
                 ZeroOrMore(Sequence(COMMA(), Object_(), push(((TripleBuilder) peek(2)).add((Node) pop(), (Node) pop())))));
     }
-
-    public Node peekNode(int i) {
-        return (Node) peek(i);
-    }
-
 
     public Rule Object_() {
         debug("Object_");
@@ -415,6 +404,16 @@ public class SparqlParser extends BaseParser<Object> {
         return FirstOf(IriRef(), RdfLiteral(), NumericLiteral(),
                 BooleanLiteral(), BlankNode(), Sequence(OPEN_BRACE(),
                         CLOSE_BRACE()));
+    }
+
+    public Rule ExpressionList() {
+
+        return Sequence(OPEN_BRACE(), Expression(), push(new ExprList((Expr) pop())), ZeroOrMore(Sequence(COMMA(), Expression(), addExprToExprList())), CLOSE_BRACE());
+    }
+
+    public boolean addExprToExprList() {
+        ((ExprList) peek(1)).add((Expr) pop());
+        return true;
     }
 
     public Rule Expression() {
@@ -487,19 +486,238 @@ public class SparqlParser extends BaseParser<Object> {
     public Rule BuiltInCall() {
         return FirstOf(
                 //TODO verify is the are all
+
+                Sequence(Aggregate(), push(getQuery().allocAggregate((Aggregator) pop()))),
                 Sequence(STR(), OPEN_BRACE(), Expression(), push(new E_Str((Expr) pop())), CLOSE_BRACE()),
                 Sequence(LANG(), OPEN_BRACE(), Expression(), push(new E_Lang((Expr) pop())), CLOSE_BRACE()),
                 Sequence(LANGMATCHES(), OPEN_BRACE(), Expression(), COMMA(),
                         Expression(), push(new E_LangMatches((Expr) pop(), (Expr) pop())), CLOSE_BRACE()),
                 Sequence(DATATYPE(), OPEN_BRACE(), Expression(), push(new E_Datatype((Expr) pop())), CLOSE_BRACE()),
                 Sequence(BOUND(), OPEN_BRACE(), Var(), push(new E_Bound(new ExprVar((String) pop()))), CLOSE_BRACE()),
-                Sequence(SAMETERM(), OPEN_BRACE(), Expression(), COMMA(),
-                        Expression(), push(new E_SameTerm((Expr) pop(), (Expr) pop())), CLOSE_BRACE()),
+                Sequence(BNODE(), OPEN_BRACE(), Expression(), push(new E_BNode((Expr) pop())), CLOSE_BRACE()),
+                Sequence(NIL(), push(new E_BNode())),
+                Sequence(RAND(), push(new E_Random())),
+                Sequence(AVG(), OPEN_BRACE(), Expression(), push(new E_NumAbs((Expr) pop())), CLOSE_BRACE()),
+                Sequence(CEIL(), OPEN_BRACE(), Expression(), push(new E_NumCeiling((Expr) pop())), CLOSE_BRACE()),
+                Sequence(FLOOR(), OPEN_BRACE(), Expression(), push(new E_NumFloor((Expr) pop())), CLOSE_BRACE()),
+                Sequence(ROUND(), OPEN_BRACE(), Expression(), push(new E_NumRound((Expr) pop())), CLOSE_BRACE()),
+                Sequence(CONCAT(), OPEN_BRACE(), ExpressionList(), push(new E_StrConcat((ExprList) pop())), CLOSE_BRACE()),
+
+                Sequence(STRLEN(), OPEN_BRACE(), Expression(), push(new E_StrLength((Expr) pop())), CLOSE_BRACE()),
+                Sequence(UCASE(), OPEN_BRACE(), Expression(), push(new E_StrUpperCase((Expr) pop())), CLOSE_BRACE()),
+                Sequence(LCASE(), OPEN_BRACE(), Expression(), push(new E_StrUpperCase((Expr) pop())), CLOSE_BRACE()),
+                Sequence(ENCODE_FOR_URI(), OPEN_BRACE(), Expression(), push(new E_StrEncodeForURI((Expr) pop())), CLOSE_BRACE()),
+                Sequence(CONTAINS(), OPEN_BRACE(), Expression(), COMMA(), Expression(), swap(), push(new E_StrContains((Expr) pop(), (Expr) pop())), CLOSE_BRACE()),
+                Sequence(SAME_TERM(), OPEN_BRACE(), Expression(), COMMA(), Expression(), swap(), push(new E_SameTerm((Expr) pop(), (Expr) pop())), CLOSE_BRACE()),
+                Sequence(STRDT(), OPEN_BRACE(), Expression(), COMMA(), Expression(), swap(), push(new E_StrDatatype((Expr) pop(), (Expr) pop())), CLOSE_BRACE()),
+                Sequence(STRLANG(), OPEN_BRACE(), Expression(), COMMA(), Expression(), swap(), push(new E_StrLang((Expr) pop(), (Expr) pop())), CLOSE_BRACE()),
+                Sequence(IF(), OPEN_BRACE(), Expression(), COMMA(), Expression(), COMMA(), Expression(), swap3(), push(new E_Conditional((Expr) pop(), (Expr) pop(), (Expr) pop())), CLOSE_BRACE()),
+                Sequence(SUBSTR(), OPEN_BRACE(), Expression(), COMMA(), Expression(), COMMA(), Expression(), swap3(), push(new E_StrSubstring((Expr) pop(), (Expr) pop(), (Expr) pop())), CLOSE_BRACE()),
+                Sequence(REPLACE(), OPEN_BRACE(), Expression(), COMMA(), Expression(), COMMA(), Expression(), COMMA(), Expression(), swap4(), push(new E_StrReplace((Expr) pop(), (Expr) pop(), (Expr) pop(), (Expr) pop())), CLOSE_BRACE()), //TODO check swap4
+
                 Sequence(ISIRI(), OPEN_BRACE(), Expression(), push(new E_IsIRI((Expr) pop())), CLOSE_BRACE()),
                 Sequence(ISURI(), OPEN_BRACE(), Expression(), push(new E_IsURI((Expr) pop())), CLOSE_BRACE()),
                 Sequence(ISBLANK(), OPEN_BRACE(), Expression(), push(new E_IsBlank((Expr) pop())), CLOSE_BRACE()),
                 Sequence(ISLITERAL(), OPEN_BRACE(), Expression(), push(new E_IsLiteral((Expr) pop())), CLOSE_BRACE()),
+                Sequence(IS_NUMERIC(), OPEN_BRACE(), Expression(), push(new E_IsNumeric((Expr) pop())), CLOSE_BRACE()),
+
+                Sequence(SAMETERM(), OPEN_BRACE(), Expression(), COMMA(),
+                        Expression(), push(new E_SameTerm((Expr) pop(), (Expr) pop())), CLOSE_BRACE()),
+
                 RegexExpression());
+    }
+
+    public Rule Aggregate() {
+        return FirstOf(
+                Count(),
+                Sum(),
+                Min(),
+                Max(),
+                Avg(),
+                Sample(),
+                GroupContant(),
+                SEMICOLON());
+
+    }
+
+    public Rule GroupContant() {
+        return Sequence(GROUP_CONCAT(),
+                OPEN_BRACE(),
+                FirstOf(
+                        Sequence(DISTINCT(), push(new Boolean(true))),
+                        push(new Boolean(false))),
+                Sequence(
+                        Expression(),
+                        SEMICOLON(),
+                        SEPARATOR(),
+                        EQUAL(),
+                        String(),
+                        swap(),
+                        push(AggregatorFactory.createGroupConcat((Boolean) pop(),
+                                (Expr) pop(), trimMatch(), new ExprList()))
+                ), CLOSE_BRACE());
+    }
+
+    public Rule SEPARATOR() {
+        return StringIgnoreCaseWS("SEPARATOR");
+    }
+
+    public Rule Sample() {
+        return Sequence(SAMPLE(), OPEN_BRACE(), FirstOf(
+                Sequence(DISTINCT(), push(new Boolean(true))),
+                push(new Boolean(false))),
+                Sequence(Expression(), swap(),
+                        push(AggregatorFactory.createSample((Boolean) pop(), (Expr) pop()))),
+                CLOSE_BRACE());
+    }
+
+    public Rule Avg() {
+        return Sequence(AVG(), OPEN_BRACE(), FirstOf(
+                Sequence(DISTINCT(), push(new Boolean(true))),
+                push(new Boolean(false))),
+                Sequence(Expression(), swap(),
+                        push(AggregatorFactory.createAvg((Boolean) pop(), (Expr) pop()))),
+                CLOSE_BRACE());
+    }
+
+    public Rule Max() {
+        return Sequence(MAX(), OPEN_BRACE(), FirstOf(
+                Sequence(DISTINCT(), push(new Boolean(true))),
+                push(new Boolean(false))),
+                Sequence(Expression(), swap(),
+                        push(AggregatorFactory.createMax((Boolean) pop(), (Expr) pop()))),
+                CLOSE_BRACE());
+    }
+
+    public Rule Min() {
+        return Sequence(MIN(), OPEN_BRACE(), FirstOf(
+                Sequence(DISTINCT(), push(new Boolean(true))),
+                push(new Boolean(false))),
+                Sequence(Expression(), swap(),
+                        push(AggregatorFactory.createMin((Boolean) pop(), (Expr) pop()))),
+                CLOSE_BRACE());
+    }
+
+    public Rule Sum() {
+        return Sequence(SUM(), OPEN_BRACE(), FirstOf(
+                Sequence(DISTINCT(), push(new Boolean(true))),
+                push(new Boolean(false))),
+                Sequence(Expression(), swap(),
+                        push(AggregatorFactory.createSum((Boolean) pop(), (Expr) pop()))),
+                CLOSE_BRACE());
+    }
+
+    public Rule Count() {
+        return Sequence(COUNT(), OPEN_BRACE(), FirstOf(
+                Sequence(DISTINCT(), push(new Boolean(true))),
+                push(new Boolean(false))),
+                FirstOf(
+                        Sequence(ASTERISK(), push(AggregatorFactory.createCount((Boolean) pop()))),
+                        Sequence(Expression(), swap(),
+                                push(AggregatorFactory.createCountExpr((Boolean) pop(), (Expr) pop())))
+                ),
+                CLOSE_BRACE());
+    }
+
+    public Rule COUNT() {
+        return StringIgnoreCaseWS("COUNT");
+    }
+
+    public Rule SUM() {
+        return StringIgnoreCaseWS("SUM");
+    }
+
+    public Rule MIN() {
+        return StringIgnoreCaseWS("MIN");
+    }
+
+    public Rule MAX() {
+        return StringIgnoreCaseWS("MAX");
+    }
+
+    public Rule SAMPLE() {
+        return StringIgnoreCaseWS("SAMPLE");
+    }
+
+    public Rule GROUP_CONCAT() {
+        return StringIgnoreCaseWS("GROUP_CONCAT");
+    }
+
+
+    public Rule IF() {
+        return IgnoreCase("IF");
+    }
+
+    public Rule STRLANG() {
+        return IgnoreCase("STRLANG");
+    }
+
+    public Rule STRDT() {
+        return IgnoreCase("STRDT");
+    }
+
+    public Rule SAME_TERM() {
+        return IgnoreCase("SAME_TERM");
+    }
+
+    public Rule IS_NUMERIC() {
+        return IgnoreCase("IS_NUMERIC");
+    }
+
+    public Rule ENCODE_FOR_URI() {
+        return IgnoreCase("ENCODE_FOR_URI");
+    }
+
+    public Rule CONTAINS() {
+        return IgnoreCase("CONTAINS");
+    }
+
+    public Rule SUBSTR() {
+        return IgnoreCase("SUBSTR");
+    }
+
+    public Rule REPLACE() {
+        return IgnoreCase("REPLACE");
+    }
+
+    public Rule STRLEN() {
+        return IgnoreCase("STRLEN");
+    }
+
+    public Rule UCASE() {
+        return IgnoreCase("UCASE");
+    }
+
+    public Rule LCASE() {
+        return IgnoreCase("LCASE");
+    }
+
+    public Rule AVG() {
+        return IgnoreCase("AVG");
+    }
+
+    public Rule ROUND() {
+        return IgnoreCase("ROUND");
+    }
+
+    public Rule FLOOR() {
+        return IgnoreCase("FLOOR");
+    }
+
+    public Rule CONCAT() {
+        return IgnoreCase("CONCAT");
+    }
+
+    public Rule CEIL() {
+        return IgnoreCase("CEIL");
+    }
+
+    public Rule RAND() {
+        return IgnoreCase("RAND");
+    }
+
+    public Rule NIL() {
+        return Sequence(LESS(), IgnoreCase("NIL"), GREATER());
     }
 
     public Rule RegexExpression() {
@@ -515,7 +733,7 @@ public class SparqlParser extends BaseParser<Object> {
     }
 
     public Rule RdfLiteral() {
-        return Sequence(String(), Optional(FirstOf(LANGTAG(), Sequence(
+        return Sequence(String(), push(NodeFactory.createLiteralByValue(trimMatch().replace("\"", ""), XSDDatatype.XSDstring)), Optional(FirstOf(LANGTAG(), Sequence(
                 REFERENCE(), IriRef()))));
     }
 
@@ -558,8 +776,8 @@ public class SparqlParser extends BaseParser<Object> {
     }
 
     public Rule String() {
-        return Sequence(FirstOf(STRING_LITERAL_LONG1(), STRING_LITERAL1(),
-                STRING_LITERAL_LONG2(), STRING_LITERAL2()), push(NodeFactory.createLiteralByValue(match().trim().replace("\"",""), XSDDatatype.XSDstring)));
+        return FirstOf(STRING_LITERAL_LONG1(), STRING_LITERAL1(),
+                STRING_LITERAL_LONG2(), STRING_LITERAL2());
     }
 
     public Rule IriRef() {
@@ -688,6 +906,15 @@ public class SparqlParser extends BaseParser<Object> {
         return ChWS('a');
     }
 
+    public Rule GROUP() {
+        return StringIgnoreCaseWS("GROUP");
+    }
+
+    public Rule AS() {
+        debug("AS");
+        return StringIgnoreCaseWS("AS");
+    }
+
     public Rule STR() {
         return StringIgnoreCaseWS("STR");
     }
@@ -706,6 +933,10 @@ public class SparqlParser extends BaseParser<Object> {
 
     public Rule BOUND() {
         return StringIgnoreCaseWS("BOUND");
+    }
+
+    public Rule BNODE() {
+        return StringIgnoreCaseWS("BNODE");
     }
 
     public Rule SAMETERM() {
@@ -846,7 +1077,6 @@ public class SparqlParser extends BaseParser<Object> {
     }
 
     public Rule VARNAME() {
-        debug("VARNAME");
         return Sequence(FirstOf(PN_CHARS_U(), DIGIT()),
                 ZeroOrMore(
                         FirstOf(
@@ -1008,17 +1238,6 @@ public class SparqlParser extends BaseParser<Object> {
 
     public Rule StringIgnoreCaseWS(String string) {
         return Sequence(IgnoreCase(string), WS());
-    }
-
-    public boolean my_push(Object o) {
-        System.out.println(o.getClass());
-        return push(o);
-
-    }
-
-    public Object my_peek() {
-        return peek();
-
     }
 
     void debug(String calls) {

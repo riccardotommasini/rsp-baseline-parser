@@ -15,12 +15,12 @@ package sparql;/*
  */
 
 import org.apache.commons.io.FileUtils;
-import org.apache.jena.query.QueryFactory;
 import org.apache.jena.query.SortCondition;
 import org.apache.jena.query.Syntax;
 import org.apache.jena.riot.system.IRIResolver;
 import org.apache.jena.sparql.core.Var;
 import org.apache.jena.sparql.core.VarExprList;
+import org.apache.jena.sparql.expr.Expr;
 import org.apache.jena.sparql.lang.SPARQLParser;
 import org.apache.jena.sparql.lang.SyntaxVarScope;
 import org.apache.jena.sparql.syntax.Element;
@@ -67,8 +67,10 @@ public class Main {
         System.out.println(q.getQueryType());
         System.out.println(q.getNamedGraphURIs());
 
-        for (Var v : q.getProjectVars()) {
-            System.out.println("Project Var " + v.toString());
+        VarExprList project = q.getProject();
+
+        for (Var v : project.getVars()) {
+            System.out.println("Project Var " + v.toString() + " Expr " + project.getExpr(v));
         }
         for (String v : q.getResultVars()) {
             System.out.println("Result Var " + v);
@@ -105,6 +107,11 @@ public class Main {
                     groupBy.getExpr(v));
         }
 
+        System.out.println("HAVING");
+        List<Expr> havingExprs = q.getHavingExprs();
+        for (Expr e : havingExprs) {
+            System.out.println("EXPR " + e.toString());
+        }
         System.out.println("---");
 
     }
