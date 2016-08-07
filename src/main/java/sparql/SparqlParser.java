@@ -141,11 +141,11 @@ public class SparqlParser extends BaseParser<Object> {
     }
 
     public Rule LimitClause() {
-        return Sequence(LIMIT(), INTEGER());
+        return Sequence(LIMIT(), INTEGER(), pushQuery(popQuery().setLimit(match())));
     }
 
     public Rule OffsetClause() {
-        return Sequence(OFFSET(), INTEGER());
+        return Sequence(OFFSET(), INTEGER(), pushQuery(popQuery().setOffset(match())));
     }
 
     public Rule GroupGraphPattern() {
@@ -468,7 +468,10 @@ public class SparqlParser extends BaseParser<Object> {
     }
 
     public Rule NumericLiteralUnsigned() {
-        return FirstOf(DOUBLE(), DECIMAL(), INTEGER());
+        return FirstOf(
+                Sequence(DOUBLE(), push(NodeFactory.createLiteral(match(), XSDDatatype.XSDdouble))),
+                Sequence(DECIMAL(), push(NodeFactory.createLiteral(match(), XSDDatatype.XSDdecimal))),
+                Sequence(INTEGER(), push(NodeFactory.createLiteral(match(), XSDDatatype.XSDinteger))));
     }
 
     public boolean asExpr() {
@@ -476,13 +479,17 @@ public class SparqlParser extends BaseParser<Object> {
     }
 
     public Rule NumericLiteralPositive() {
-        return FirstOf(DOUBLE_POSITIVE(), DECIMAL_POSITIVE(),
-                INTEGER_POSITIVE());
+        return FirstOf(
+                Sequence(DOUBLE_POSITIVE(), push(NodeFactory.createLiteral(match(), XSDDatatype.XSDdouble))),
+                Sequence(DECIMAL_POSITIVE(), push(NodeFactory.createLiteral(match(), XSDDatatype.XSDdecimal))),
+                Sequence(INTEGER_POSITIVE(), push(NodeFactory.createLiteral(match(), XSDDatatype.XSDinteger))));
     }
 
     public Rule NumericLiteralNegative() {
-        return FirstOf(DOUBLE_NEGATIVE(), DECIMAL_NEGATIVE(),
-                INTEGER_NEGATIVE());
+        return FirstOf(
+                Sequence(DOUBLE_NEGATIVE(), push(NodeFactory.createLiteral(match(), XSDDatatype.XSDdouble))),
+                Sequence(DECIMAL_NEGATIVE(), push(NodeFactory.createLiteral(match(), XSDDatatype.XSDdecimal))),
+                Sequence(INTEGER_NEGATIVE(), push(NodeFactory.createLiteral(match(), XSDDatatype.XSDinteger))));
     }
 
     public Rule BooleanLiteral() {
@@ -690,7 +697,7 @@ public class SparqlParser extends BaseParser<Object> {
 
     public boolean isPush(String s) {
         System.out.println(s);
-        return push(Var.alloc(s));
+        return push(Var.alloc(s.trim()));
     }
 
     public Rule VAR2() {
@@ -704,7 +711,7 @@ public class SparqlParser extends BaseParser<Object> {
     }
 
     public Rule INTEGER() {
-        return Sequence(Sequence(OneOrMore(DIGIT()), push(NodeFactory.createLiteral(match(), XSDDatatype.XSDinteger))), WS());
+        return Sequence(OneOrMore(DIGIT()), WS());
     }
 
     public Rule DECIMAL() {
@@ -717,11 +724,10 @@ public class SparqlParser extends BaseParser<Object> {
     }
 
     public Rule DOUBLE() {
-        return Sequence(FirstOf(//
-                Sequence(Sequence(OneOrMore(DIGIT()), DOT(), ZeroOrMore(DIGIT()),
-                        EXPONENT()), push(NodeFactory.createLiteral(match(), XSDDatatype.XSDdouble))), //
-                Sequence(Sequence(DOT(), OneOrMore(DIGIT()), EXPONENT()), push(NodeFactory.createLiteral(match(), XSDDatatype.XSDdouble))), // //
-                Sequence(Sequence(OneOrMore(DIGIT()), EXPONENT()), push(NodeFactory.createLiteral(match(), XSDDatatype.XSDdouble)))), WS());
+        return Sequence(FirstOf(
+                Sequence(OneOrMore(DIGIT()), DOT(), ZeroOrMore(DIGIT()), EXPONENT()),
+                Sequence(DOT(), OneOrMore(DIGIT()), EXPONENT())),
+                Sequence(OneOrMore(DIGIT()), EXPONENT()), WS());
     }
 
     public Rule INTEGER_POSITIVE() {

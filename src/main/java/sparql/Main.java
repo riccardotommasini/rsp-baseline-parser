@@ -72,10 +72,16 @@ public class Main {
         }
 
         List<SortCondition> orderBy = q.getOrderBy();
-        for (SortCondition sc : orderBy) {
-            System.out.println(sc.getExpression().toString() + "  " +
-                    ((org.apache.jena.query.Query.ORDER_DESCENDING == sc.direction) ? "DESC" : "ASC"));
-        }
+
+        if (orderBy != null && !orderBy.isEmpty())
+            for (SortCondition sc : orderBy) {
+                System.out.println(sc.getExpression().toString() + "  " +
+                        ((org.apache.jena.query.Query.ORDER_DESCENDING == sc.direction) ? "DESC" : "ASC"));
+            }
+
+        System.out.println("LIMIT " + q.getLimit());
+        System.out.println("OFFSET " + q.getOffset());
+
         System.out.println("---");
 
     }

@@ -124,4 +124,14 @@ public class Query {
         q.addOrderBy(pop, "DESC".equals(s) ? orderDescending : orderAscending);
         return this;
     }
+
+    public Query setLimit(String limit) {
+        q.setLimit(Integer.parseInt(limit.trim()));
+        return this;
+    }
+
+    public Query setOffset(String offset) {
+        q.setOffset(Integer.parseInt(offset.trim()));
+        return this;
+    }
 }
