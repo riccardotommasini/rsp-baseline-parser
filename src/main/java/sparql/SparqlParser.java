@@ -79,8 +79,8 @@ public class SparqlParser extends BaseParser<Object> {
     }
 
     public Rule Query() {
-        return Sequence(push(new Query()), WS(), Prologue(), FirstOf(SelectQuery(), ConstructQuery())
-                , EOI);   //, DescribeQuery(), AskQuery()
+        return Sequence(push(new Query()), WS(), Prologue(), FirstOf(SelectQuery(), ConstructQuery(), AskQuery()), DescribeQuery()
+                , EOI);
     }
 
     public Rule Prologue() {
@@ -160,8 +160,8 @@ public class SparqlParser extends BaseParser<Object> {
     }
 
     public Rule DescribeQuery() {
-        return Sequence(Sequence(DESCRIBE(), pushQuery(popQuery(0).setDescribeQuery())), FirstOf(OneOrMore(VarOrIRIref()),
-                ASTERISK()), ZeroOrMore(DatasetClause()),
+        return Sequence(Sequence(DESCRIBE(), pushQuery(popQuery(0).setDescribeQuery())), FirstOf(OneOrMore(Sequence(VarOrIRIref(), push(popQuery(1).addDescribeNode((Node) pop())))),
+                Sequence(ASTERISK(), push(popQuery(0).setQueryStar()))), ZeroOrMore(DatasetClause()),
                 Optional(WhereClause()), SolutionModifiers());
     }
 
@@ -479,15 +479,14 @@ public class SparqlParser extends BaseParser<Object> {
     }
 
     public Rule RelationalExpression() {
-        return Sequence(NumericExpression(), Optional(FirstOf(//
-                Sequence(EQUAL(), NumericExpression(), swap(), push(new E_Equals((Expr) pop(), (Expr) pop()))), //
-                Sequence(NOT_EQUAL(), NumericExpression(), swap(), push(new E_NotEquals((Expr) pop(), (Expr) pop()))), //
-                Sequence(LESS(), NumericExpression(), swap(), push(new E_LessThan((Expr) pop(), (Expr) pop()))), //
-                Sequence(GREATER(), NumericExpression(), swap(), push(new E_GreaterThan((Expr) pop(), (Expr) pop()))), //
-                Sequence(LESS_EQUAL(), NumericExpression(), swap(), push(new E_LessThanOrEqual((Expr) pop(), (Expr) pop()))), //
-                Sequence(GREATER_EQUAL(), NumericExpression(), swap(), push(new E_GreaterThanOrEqual((Expr) pop(), (Expr) pop()))) //
-                ) //
-        ));
+        return Sequence(NumericExpression(), Optional(FirstOf(
+                Sequence(EQUAL(), NumericExpression(), swap(), push(new E_Equals((Expr) pop(), (Expr) pop()))),
+                Sequence(NOT_EQUAL(), NumericExpression(), swap(), push(new E_NotEquals((Expr) pop(), (Expr) pop()))),
+                Sequence(LESS(), NumericExpression(), swap(), push(new E_LessThan((Expr) pop(), (Expr) pop()))),
+                Sequence(GREATER(), NumericExpression(), swap(), push(new E_GreaterThan((Expr) pop(), (Expr) pop()))),
+                Sequence(LESS_EQUAL(), NumericExpression(), swap(), push(new E_LessThanOrEqual((Expr) pop(), (Expr) pop()))),
+                Sequence(GREATER_EQUAL(), NumericExpression(), swap(), push(new E_GreaterThanOrEqual((Expr) pop(), (Expr) pop())))
+        )));
     }
 
     public Rule NumericExpression() {

@@ -178,4 +178,10 @@ public class Query {
         q.setConstructTemplate(template);
         return this;
     }
+
+    public Query addDescribeNode(Node pop) {
+        q.addDescribeNode(pop);
+        q.setQueryResultStar(false);
+        return this;
+    }
 }
