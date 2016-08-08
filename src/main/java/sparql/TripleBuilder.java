@@ -3,6 +3,7 @@ package sparql;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.sparql.syntax.ElementPathBlock;
+import org.apache.jena.sparql.syntax.TripleCollectorBGP;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -12,7 +13,7 @@ import java.util.Map;
 /**
  * Created by Riccardo on 06/08/16.
  */
-public class TripleBuilder implements Cloneable {
+public class TripleBuilder {
 
     public Node s;
     public Map<Node, List<Node>> pos;
@@ -50,7 +51,7 @@ public class TripleBuilder implements Cloneable {
         return p;
     }
 
-    public ElementPathBlock build() {
+    public ElementPathBlock buildPath() {
         ElementPathBlock tempAcc = new ElementPathBlock();
         for (Node p : pos.keySet()) {
             for (Node o : pos.get(p)) {
@@ -58,5 +59,21 @@ public class TripleBuilder implements Cloneable {
             }
         }
         return tempAcc;
+    }
+
+    public TripleCollectorBGP buildTemplate() {
+        TripleCollectorBGP acc = new TripleCollectorBGP();
+        for (Node p : pos.keySet()) {
+            for (Node o : pos.get(p)) {
+                System.out.println("TripleCollectorBGP " +
+                        "[" + s +
+                        "] [" + p +
+                        "] [" + o +
+                        "]");
+
+                acc.addTriple(new Triple(s, p, o));
+            }
+        }
+        return acc;
     }
 }

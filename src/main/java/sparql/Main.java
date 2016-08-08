@@ -15,12 +15,14 @@ package sparql;/*
  */
 
 import org.apache.commons.io.FileUtils;
+import org.apache.jena.query.QueryFactory;
 import org.apache.jena.query.SortCondition;
-import org.apache.jena.query.Syntax;
 import org.apache.jena.riot.system.IRIResolver;
+import org.apache.jena.sparql.core.BasicPattern;
 import org.apache.jena.sparql.core.Var;
 import org.apache.jena.sparql.core.VarExprList;
 import org.apache.jena.sparql.expr.Expr;
+import org.apache.jena.sparql.lang.ParserSPARQL11;
 import org.apache.jena.sparql.lang.SPARQLParser;
 import org.apache.jena.sparql.lang.SyntaxVarScope;
 import org.apache.jena.sparql.syntax.Element;
@@ -39,6 +41,16 @@ public class Main {
     public static void main(String[] args) throws IOException {
 
         String input = getInput();
+
+        //jena
+        org.apache.jena.query.Query query = new org.apache.jena.query.Query();
+
+        SPARQLParser jenaParser = new ParserSPARQL11();
+        IRIResolver resolver = IRIResolver.create();
+        query.setResolver(resolver);
+        org.apache.jena.query.Query parsed = jenaParser.parse(query, input);
+        print(parsed);
+
         SparqlParser parser = Parboiled.createParser(SparqlParser.class);
         ParsingResult<Query> result = new ReportingParseRunner(parser.Query()).run(input);
         Node<Query> n = result.parseTreeRoot.getChildren().get(0);
@@ -47,16 +59,6 @@ public class Main {
         print(q);
         System.out.println("Check valid");
         SyntaxVarScope.check(q);
-
-        //jena
-        org.apache.jena.query.Query query = new org.apache.jena.query.Query();
-
-        SPARQLParser jenaParser = SPARQLParser.createParser(Syntax.defaultQuerySyntax);
-        IRIResolver resolver = IRIResolver.create();
-        query.setResolver(resolver);
-        org.apache.jena.query.Query parsed = jenaParser.parse(query, input);
-
-        print(parsed);
 
 
     }
@@ -69,11 +71,19 @@ public class Main {
 
         VarExprList project = q.getProject();
 
-        for (Var v : project.getVars()) {
-            System.out.println("Project Var " + v.toString() + " Expr " + project.getExpr(v));
-        }
-        for (String v : q.getResultVars()) {
-            System.out.println("Result Var " + v);
+        if (q.isSelectType()) {
+
+            for (Var v : project.getVars()) {
+                System.out.println("Project Var " + v.toString() + " Expr " + project.getExpr(v));
+            }
+            for (String v : q.getResultVars()) {
+                System.out.println("Result Var " + v);
+            }
+        } else if (q.isConstructType()) {
+            Map<org.apache.jena.graph.Node, BasicPattern> graphPattern = q.getConstructTemplate().getGraphPattern();
+            for (org.apache.jena.graph.Node b : graphPattern.keySet()) {
+                System.out.println("Node " + b + " Pattern " + graphPattern.get(b));
+            }
         }
 
         Element queryPattern = q.getQueryPattern();
@@ -113,6 +123,7 @@ public class Main {
             System.out.println("EXPR " + e.toString());
         }
         System.out.println("---");
+
 
     }
 

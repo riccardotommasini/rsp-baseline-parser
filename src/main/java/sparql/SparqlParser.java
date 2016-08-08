@@ -56,10 +56,6 @@ public class SparqlParser extends BaseParser<Object> {
         return (Query) peek(i);
     }
 
-    public Query getQuery(int i) {
-        return getQuery("", i);
-    }
-
     public Query popQuery(int i) {
 
         if (i == -1) {
@@ -79,12 +75,12 @@ public class SparqlParser extends BaseParser<Object> {
 
 
     public Element popElement() {
-        return ((Element) pop(0));
+        return ((Element) pop());
     }
 
     public Rule Query() {
-        return Sequence(push(new Query()), WS(), Prologue(), SelectQuery()
-                , EOI);   //ConstructQuery(), DescribeQuery(), AskQuery()
+        return Sequence(push(new Query()), WS(), Prologue(), FirstOf(SelectQuery(), ConstructQuery())
+                , EOI);   //, DescribeQuery(), AskQuery()
     }
 
     public Rule Prologue() {
@@ -104,7 +100,6 @@ public class SparqlParser extends BaseParser<Object> {
     }
 
     public Rule SelectQuery() {
-        debug("SelectQuery");
         return Sequence(
                 SelectClause(),
                 ZeroOrMore(DatasetClause()),
@@ -113,7 +108,6 @@ public class SparqlParser extends BaseParser<Object> {
     }
 
     public Rule SelectClause() {
-        debug("SelectClause");
         return Sequence(SELECT(), pushQuery(popQuery(0).setSelectQuery()),
                 Optional(
                         FirstOf(
@@ -132,8 +126,37 @@ public class SparqlParser extends BaseParser<Object> {
 
 
     public Rule ConstructQuery() {
-        return Sequence(Sequence(CONSTRUCT(), pushQuery(popQuery(0).setConstructQuery())), ConstructTemplate(),
-                ZeroOrMore(DatasetClause()), WhereClause(), SolutionModifiers());
+        return Sequence(
+                FirstOf(
+                        Sequence(
+                                ConstructClause(),
+                                ZeroOrMore(DatasetClause()),
+                                WhereClause())
+                        , Sequence(
+                                ConstructWhereClause(), ZeroOrMore(DatasetClause())))
+                , SolutionModifiers());
+    }
+
+    public Rule ConstructWhereClause() {
+        return Sequence(CONSTRUCT(), pushQuery(popQuery(0).setConstructQuery()), WHERE(), OPEN_CURLY_BRACE(), pushQuery(popQuery(0).setConstructQuery()), push(new ElementGroup()), TriplesTemplate(), addTemplateToQuery(), addElementToQuery(), CLOSE_CURLY_BRACE());
+    }
+
+    public Rule ConstructClause() {
+        return Sequence(CONSTRUCT(), pushQuery(popQuery(0).setConstructQuery()), ConstructTemplate(), addTemplateToQuery2());
+    }
+
+
+    public boolean addTemplateToQuery2() {
+        getQuery("", 1).setConstructTemplate(new Template((((TripleCollectorBGP) pop()).getBGP())));
+        return true;
+
+    }
+
+    public boolean addTemplateToQuery() {
+        ((ElementGroup) peek(1)).addElement(new ElementPathBlock(((TripleCollectorBGP) peek()).getBGP()));
+        getQuery("", 2).setConstructTemplate(new Template((((TripleCollectorBGP) pop()).getBGP())));
+        return true;
+
     }
 
     public Rule DescribeQuery() {
@@ -168,7 +191,8 @@ public class SparqlParser extends BaseParser<Object> {
     }
 
     public boolean addElementToQuery() {
-        return push(((Query) pop(1)).addElement(popElement()));
+        getQuery("", 1).addElement(popElement());
+        return true;
     }
 
     public Rule SolutionModifiers() {
@@ -227,7 +251,6 @@ public class SparqlParser extends BaseParser<Object> {
     }
 
     public Rule SubSelect() {
-        debug("SubSelect");
         return Sequence(OPEN_CURLY_BRACE(), push(new Query()), SelectClause(), WhereClause(), SolutionModifiers(), push(new ElementSubQuery(popQuery(0).getQ())), CLOSE_CURLY_BRACE());
     }
 
@@ -245,11 +268,6 @@ public class SparqlParser extends BaseParser<Object> {
         return true;
     }
 
-    public boolean addSubElement2() {
-        debug("addSubElement2");
-        ((ElementGroup) peek(2)).addElement(popElement());
-        return true;
-    }
 
     public boolean addOptionalElement() {
         return push(new ElementOptional(popElement()));
@@ -271,9 +289,8 @@ public class SparqlParser extends BaseParser<Object> {
     }
 
     public Rule TriplesBlock() {
-        debug("TriplesBlock");
-        return Sequence(TriplesSameSubject(), Optional(Sequence(DOT(),
-                Optional(Sequence(swap(), TriplesBlock(), addSubElement(), swap())))));
+        return Sequence(TriplesSameSubject(), push(((TripleBuilder) pop()).buildPath()), Optional(Sequence(DOT(),
+        Optional(Sequence(swap(), TriplesBlock(), addSubElement(), swap())))));
     }
 
     public Rule GraphPatternNotTriples() {
@@ -340,21 +357,27 @@ public class SparqlParser extends BaseParser<Object> {
         return true;
     }
 
+
+    public Rule TriplesTemplate() {
+        return Sequence(TriplesSameSubject(), push(((TripleBuilder) pop()).buildTemplate()), Optional(Sequence(DOT(),
+                Optional(Sequence(TriplesTemplate(), addTemplateToQuery())))));
+    }
+
+
     public Rule ConstructTemplate() {
 
-        return Sequence(OPEN_CURLY_BRACE(), push(new TripleCollectorBGP()), push(new Template((((TripleCollectorBGP) peek()).getBGP()))), swap(), Optional(ConstructTriples()),
+        return Sequence(OPEN_CURLY_BRACE(), ConstructTriples(),
                 CLOSE_CURLY_BRACE());
     }
 
     public Rule ConstructTriples() {
-        debug("ConstructTriples");
-        return Sequence(TriplesSameSubject(), Optional(Sequence(DOT(),
+        return Sequence(TriplesSameSubject(), push(((TripleBuilder) pop()).buildTemplate()), Optional(Sequence(DOT(),
                 Optional(ConstructTriples()))));
     }
 
     public Rule TriplesSameSubject() {
-        return FirstOf(Sequence(Sequence(VarOrTerm(), push(new TripleBuilder((Node) pop()))), //building the map
-                PropertyListNotEmpty(), push(((TripleBuilder) pop()).build())),
+        return FirstOf(Sequence(Sequence(VarOrTerm(), push(new TripleBuilder((Node) pop()))),
+                PropertyListNotEmpty()),
                 Sequence(TriplesNode(), PropertyList()));
     }
 
@@ -410,7 +433,6 @@ public class SparqlParser extends BaseParser<Object> {
     }
 
     public Rule VarOrTerm() {
-        debug("VarOrTerm");
         return FirstOf(Var(), GraphTerm());
     }
 
@@ -419,7 +441,7 @@ public class SparqlParser extends BaseParser<Object> {
     }
 
     public Rule Var() {
-        return Sequence(FirstOf(VAR1(), VAR2()), allocVariable(match()));
+        return Sequence(FirstOf(VAR1(), VAR2()), allocVariable(trimMatch()));
     }
 
     public Rule GraphTerm() {
@@ -809,7 +831,7 @@ public class SparqlParser extends BaseParser<Object> {
     }
 
     public Rule IriRef() {
-        return FirstOf(Sequence(IRI_REF(), push(NodeFactory.createURI(match()))), PrefixedName());
+        return FirstOf(Sequence(IRI_REF(), push(NodeFactory.createURI(trimMatch().replace(">", "").replace("<", "")))), PrefixedName());
     }
 
     public Rule PrefixedName() {

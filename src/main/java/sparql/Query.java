@@ -7,6 +7,7 @@ import org.apache.jena.sparql.core.Var;
 import org.apache.jena.sparql.expr.Expr;
 import org.apache.jena.sparql.expr.aggregate.Aggregator;
 import org.apache.jena.sparql.syntax.Element;
+import org.apache.jena.sparql.syntax.Template;
 import org.apache.jena.sparql.syntax.TripleCollectorMark;
 
 /**
@@ -75,6 +76,7 @@ public class Query {
     }
 
     public Query addElement(Element sub) {
+        System.out.println(sub);
         q.setQueryPattern(sub);
         return this;
     }
@@ -168,6 +170,12 @@ public class Query {
 
     public Query addHavingCondition(Expr pop) {
         q.addHavingCondition(pop);
+        return this;
+    }
+
+    public Query setConstructTemplate(Template template) {
+        System.out.println(template);
+        q.setConstructTemplate(template);
         return this;
     }
 }
