@@ -23,7 +23,6 @@ package sparql;/*
 import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.sparql.core.Var;
-import org.parboiled.BaseParser;
 import org.parboiled.Rule;
 import org.parboiled.annotations.BuildParseTree;
 
@@ -34,9 +33,115 @@ import org.parboiled.annotations.BuildParseTree;
  */
 @SuppressWarnings({"InfiniteRecursion"})
 @BuildParseTree
-public class SparqlLEXER extends BaseParser<Object> {
+public class SPARQL11Lexer extends QueryParser {
 
-    // <Lexer>
+    public Rule HAVING() {
+        return StringIgnoreCaseWS("HAVING");
+    }
+
+    public Rule SEPARATOR() {
+        return StringIgnoreCaseWS("SEPARATOR");
+    }
+
+    public Rule COUNT() {
+        return StringIgnoreCaseWS("COUNT");
+    }
+
+    public Rule SUM() {
+        return StringIgnoreCaseWS("SUM");
+    }
+
+    public Rule MIN() {
+        return StringIgnoreCaseWS("MIN");
+    }
+
+    public Rule MAX() {
+        return StringIgnoreCaseWS("MAX");
+    }
+
+    public Rule SAMPLE() {
+        return StringIgnoreCaseWS("SAMPLE");
+    }
+
+    public Rule GROUP_CONCAT() {
+        return StringIgnoreCaseWS("GROUP_CONCAT");
+    }
+
+    public Rule IF() {
+        return IgnoreCase("IF");
+    }
+
+    public Rule STRLANG() {
+        return IgnoreCase("STRLANG");
+    }
+
+    public Rule STRDT() {
+        return IgnoreCase("STRDT");
+    }
+
+    public Rule SAME_TERM() {
+        return IgnoreCase("SAME_TERM");
+    }
+
+    public Rule IS_NUMERIC() {
+        return IgnoreCase("IS_NUMERIC");
+    }
+
+    public Rule ENCODE_FOR_URI() {
+        return IgnoreCase("ENCODE_FOR_URI");
+    }
+
+    public Rule CONTAINS() {
+        return IgnoreCase("CONTAINS");
+    }
+
+    public Rule SUBSTR() {
+        return IgnoreCase("SUBSTR");
+    }
+
+    public Rule REPLACE() {
+        return IgnoreCase("REPLACE");
+    }
+
+    public Rule STRLEN() {
+        return IgnoreCase("STRLEN");
+    }
+
+    public Rule UCASE() {
+        return IgnoreCase("UCASE");
+    }
+
+    public Rule LCASE() {
+        return IgnoreCase("LCASE");
+    }
+
+    public Rule AVG() {
+        return IgnoreCase("AVG");
+    }
+
+    public Rule ROUND() {
+        return IgnoreCase("ROUND");
+    }
+
+    public Rule FLOOR() {
+        return IgnoreCase("FLOOR");
+    }
+
+    public Rule CONCAT() {
+        return IgnoreCase("CONCAT");
+    }
+
+    public Rule CEIL() {
+        return IgnoreCase("CEIL");
+    }
+
+    public Rule RAND() {
+        return IgnoreCase("RAND");
+    }
+
+    public Rule NIL() {
+        return Sequence(LESS(), IgnoreCase("NIL"), GREATER());
+    }
 
     public Rule WS() {
         return ZeroOrMore(FirstOf(COMMENT(), WS_NO_COMMENT()));
@@ -62,8 +167,29 @@ public class SparqlLEXER extends BaseParser<Object> {
         return StringIgnoreCaseWS("PREFIX");
     }
 
+    public Rule SELECT() {
+        return StringIgnoreCaseWS("SELECT");
+    }
+
+    public Rule DISTINCT() {
+        return StringIgnoreCaseWS("DISTINCT");
+    }
+
     public Rule REDUCED() {
         return StringIgnoreCaseWS("REDUCED");
+    }
+
+    public Rule CONSTRUCT() {
+        return StringIgnoreCaseWS("CONSTRUCT");
+    }
+
+    public Rule DESCRIBE() {
+        return StringIgnoreCaseWS("DESCRIBE");
+    }
+
+    public Rule ASK() {
+        return StringIgnoreCaseWS("ASK");
+
     }
 
     public Rule FROM() {
@@ -87,11 +213,11 @@ public class SparqlLEXER extends BaseParser<Object> {
     }
 
     public Rule ASC() {
-        return StringIgnoreCaseWS("ASC");
+        return Sequence(StringIgnoreCaseWS("ASC"), push("ASC"));
     }
 
     public Rule DESC() {
-        return StringIgnoreCaseWS("DESC");
+        return Sequence(StringIgnoreCaseWS("DESC"), push("DESC"));
     }
 
     public Rule LIMIT() {
@@ -122,6 +248,14 @@ public class SparqlLEXER extends BaseParser<Object> {
         return ChWS('a');
     }
 
+    public Rule GROUP() {
+        return StringIgnoreCaseWS("GROUP");
+    }
+
+    public Rule AS() {
+        return StringIgnoreCaseWS("AS");
+    }
+
     public Rule STR() {
         return StringIgnoreCaseWS("STR");
     }
@@ -140,6 +274,10 @@ public class SparqlLEXER extends BaseParser<Object> {
 
     public Rule BOUND() {
         return StringIgnoreCaseWS("BOUND");
+    }
+
+    public Rule BNODE() {
+        return StringIgnoreCaseWS("BNODE");
     }
 
     public Rule SAMETERM() {
@@ -186,13 +324,21 @@ public class SparqlLEXER extends BaseParser<Object> {
     }
 
     public Rule VAR1() {
-        return Sequence('?', VARNAME(), push(Var.alloc(match())), WS());
+        return Sequence('?', VARNAME(), WS());
+    }
+
+    public boolean allocVariable(String s) {
+        return push(Var.alloc(s.trim().replace("?", "").replace("$", "")));
     }
 
     public Rule VAR2() {
-        return Sequence('$', VARNAME(), push(Var.alloc(match())), WS());
+        return Sequence('$', VARNAME(), WS());
     }
 
+    public Rule LANGTAG() {
+        return Sequence('@', OneOrMore(PN_CHARS_BASE()), ZeroOrMore(Sequence(
+                MINUS(), OneOrMore(Sequence(PN_CHARS_BASE(), DIGIT())))), WS());
+    }
 
     public Rule INTEGER() {
         return Sequence(OneOrMore(DIGIT()), WS());
@@ -208,10 +354,9 @@ public class SparqlLEXER extends BaseParser<Object> {
     }
 
     public Rule DOUBLE() {
-        return Sequence(FirstOf(//
-                Sequence(OneOrMore(DIGIT()), DOT(), ZeroOrMore(DIGIT()),
-                        EXPONENT()), //
-                Sequence(DOT(), OneOrMore(DIGIT()), EXPONENT())), // //
+        return Sequence(FirstOf(
+                Sequence(OneOrMore(DIGIT()), DOT(), ZeroOrMore(DIGIT()), EXPONENT()),
+                Sequence(DOT(), OneOrMore(DIGIT()), EXPONENT())),
                 Sequence(OneOrMore(DIGIT()), EXPONENT()), WS());
     }
 
@@ -392,6 +537,7 @@ public class SparqlLEXER extends BaseParser<Object> {
     }
 
     public Rule ASTERISK() {
+        debug("ASTERISK");
         return ChWS('*');
     }
 

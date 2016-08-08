@@ -15,7 +15,6 @@ package sparql;/*
  */
 
 import org.apache.commons.io.FileUtils;
-import org.apache.jena.query.QueryFactory;
 import org.apache.jena.query.SortCondition;
 import org.apache.jena.riot.system.IRIResolver;
 import org.apache.jena.sparql.core.BasicPattern;
@@ -51,7 +50,7 @@ public class Main {
         org.apache.jena.query.Query parsed = jenaParser.parse(query, input);
         print(parsed);
 
-        SparqlParser parser = Parboiled.createParser(SparqlParser.class);
+        SPARQL11Parser parser = Parboiled.createParser(SPARQL11Parser.class);
         ParsingResult<Query> result = new ReportingParseRunner(parser.Query()).run(input);
         Node<Query> n = result.parseTreeRoot.getChildren().get(0);
         org.apache.jena.query.Query q = n.getValue().getQ();
