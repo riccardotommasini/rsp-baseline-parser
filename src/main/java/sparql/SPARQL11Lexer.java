@@ -327,10 +327,6 @@ public class SPARQL11Lexer extends QueryParser {
         return Sequence('?', VARNAME(), WS());
     }
 
-    public boolean allocVariable(String s) {
-        return push(Var.alloc(s.trim().replace("?", "").replace("$", "")));
-    }
-
     public Rule VAR2() {
         return Sequence('$', VARNAME(), WS());
     }
@@ -537,7 +533,6 @@ public class SPARQL11Lexer extends QueryParser {
     }
 
     public Rule ASTERISK() {
-        debug("ASTERISK");
         return ChWS('*');
     }
 

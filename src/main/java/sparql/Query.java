@@ -30,7 +30,6 @@ public class Query {
     }
 
     public org.apache.jena.query.Query getQ() {
-        System.out.println("Getting q");
         return q;
     }
 
@@ -76,7 +75,6 @@ public class Query {
     }
 
     public Query addElement(Element sub) {
-        System.out.println(sub);
         q.setQueryPattern(sub);
         return this;
     }
@@ -96,7 +94,6 @@ public class Query {
     }
 
     public Query setPrefix(Prefix pop) {
-        System.out.println(pop.toString());
         q.getPrologue().setPrefix(pop.getPrefix(), pop.getUri());
         return this;
     }
@@ -146,7 +143,6 @@ public class Query {
     }
 
     public Query addGroupBy(Var v) {
-        System.err.println("Add Group By " + v.toString());
         q.addGroupBy(v);
         return this;
     }
@@ -174,7 +170,6 @@ public class Query {
     }
 
     public Query setConstructTemplate(Template template) {
-        System.out.println(template);
         q.setConstructTemplate(template);
         return this;
     }

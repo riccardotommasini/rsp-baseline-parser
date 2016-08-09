@@ -1,10 +1,14 @@
 package sparql;
 
 import org.apache.jena.graph.Node;
+import org.apache.jena.graph.NodeFactory;
+import org.apache.jena.graph.Triple;
+import org.apache.jena.sparql.core.Var;
 import org.apache.jena.sparql.expr.Expr;
 import org.apache.jena.sparql.expr.ExprList;
 import org.apache.jena.sparql.expr.aggregate.Args;
 import org.apache.jena.sparql.syntax.*;
+import org.apache.jena.sparql.util.ExprUtils;
 import org.parboiled.BaseParser;
 
 /**
@@ -15,18 +19,15 @@ public class QueryParser extends BaseParser<Object> {
         if (i == -1) {
             int size = getContext().getValueStack().size();
             i = size > 0 ? size - 1 : 0;
-            System.out.println("Unknown index " + i);
         }
         return (Query) peek(i);
     }
 
     public Query popQuery(int i) {
-
         if (i == -1) {
             int size = getContext().getValueStack().size();
             i = size > 0 ? size - 1 : 0;
         }
-
         return (Query) pop(i);
     }
 
@@ -59,7 +60,11 @@ public class QueryParser extends BaseParser<Object> {
     }
 
     public boolean addSubElement() {
-        ((ElementGroup) peek(1)).addElement(popElement());
+        return addSubElement(1);
+    }
+
+    public boolean addSubElement(int i) {
+        ((ElementGroup) peek(i)).addElement(popElement());
         return true;
     }
 
@@ -80,6 +85,11 @@ public class QueryParser extends BaseParser<Object> {
         return true;
     }
 
+    public boolean addTripleToBloc(ElementPathBlock peek) {
+        peek.addTriple(new Triple((Node) peek(2), (Node) peek(1), (Node) pop()));
+        return true;
+    }
+
     public boolean addNamedGraphElement() {
         return push(new ElementNamedGraph((Node) pop(), popElement()));
     }
@@ -91,6 +101,13 @@ public class QueryParser extends BaseParser<Object> {
     public boolean addArg() {
         ((Args) peek(1)).add((Expr) pop());
         return true;
+    }
+    public boolean allocVariable(String s) {
+        return push(Var.alloc(s.substring(1)));
+    }
+
+    public boolean asExpr() {
+        return push(ExprUtils.nodeToExpr((Node) pop()));
     }
 
     public boolean addExprToExprList() {
@@ -106,4 +123,13 @@ public class QueryParser extends BaseParser<Object> {
         return match().trim();
     }
 
+    public String URIMatch() {
+        return trimMatch().replace(">", "").replace("<", "");
+    }
+
+    public boolean resolvePNAME(String match) {
+        //TODO I think this is correct beacause subqueries refer to the same prologue
+        String uri = getQuery(-1).getQ().getPrologue().expandPrefixedName(match);
+        return push(NodeFactory.createURI(uri));
+    }
 }
