@@ -46,13 +46,13 @@ public class QueryParser extends BaseParser<Object> {
         return true;
     }
 
-    public boolean addTemplateToQuery2() {
+    public boolean addTemplateToQuery() {
         getQuery(1).setConstructTemplate(new Template((((TripleCollectorBGP) pop()).getBGP())));
         return true;
 
     }
 
-    public boolean addTemplateToQuery() {
+    public boolean addTemplateAndPatternToQuery() {
         ((ElementGroup) peek(1)).addElement(new ElementPathBlock(((TripleCollectorBGP) peek()).getBGP()));
         getQuery(2).setConstructTemplate(new Template((((TripleCollectorBGP) pop()).getBGP())));
         return true;
@@ -85,7 +85,7 @@ public class QueryParser extends BaseParser<Object> {
         return true;
     }
 
-    public boolean addTripleToBloc(ElementPathBlock peek) {
+        public boolean addTripleToBloc(TripleCollector peek) {
         peek.addTriple(new Triple((Node) peek(2), (Node) peek(1), (Node) pop()));
         return true;
     }

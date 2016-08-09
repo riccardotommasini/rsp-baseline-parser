@@ -4,16 +4,13 @@ import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Node_URI;
-import org.apache.jena.graph.Triple;
 import org.apache.jena.sparql.core.Var;
 import org.apache.jena.sparql.expr.*;
 import org.apache.jena.sparql.expr.aggregate.AggregateRegistry;
 import org.apache.jena.sparql.expr.aggregate.Aggregator;
 import org.apache.jena.sparql.expr.aggregate.AggregatorFactory;
 import org.apache.jena.sparql.expr.aggregate.Args;
-import org.apache.jena.sparql.syntax.ElementGroup;
-import org.apache.jena.sparql.syntax.ElementPathBlock;
-import org.apache.jena.sparql.syntax.ElementSubQuery;
+import org.apache.jena.sparql.syntax.*;
 import org.parboiled.Rule;
 
 /**
@@ -88,11 +85,11 @@ public class SPARQL11Parser extends SPARQL11Lexer {
 
 
     public Rule ConstructWhereClause() {
-        return Sequence(CONSTRUCT(), pushQuery(popQuery(0).setConstructQuery()), WHERE(), OPEN_CURLY_BRACE(), pushQuery(popQuery(0).setConstructQuery()), push(new ElementGroup()), TriplesTemplate(), addTemplateToQuery(), addElementToQuery(), CLOSE_CURLY_BRACE());
+        return Sequence(CONSTRUCT(), pushQuery(popQuery(0).setConstructQuery()), WHERE(), OPEN_CURLY_BRACE(), pushQuery(popQuery(0).setConstructQuery()), push(new ElementGroup()), TriplesTemplate(), addTemplateAndPatternToQuery(), addElementToQuery(), CLOSE_CURLY_BRACE());
     }
 
     public Rule ConstructClause() {
-        return Sequence(CONSTRUCT(), pushQuery(popQuery(0).setConstructQuery()), ConstructTemplate(), addTemplateToQuery2());
+        return Sequence(CONSTRUCT(), pushQuery(popQuery(0).setConstructQuery()), ConstructTemplate(), addTemplateToQuery());
     }
 
     public Rule DatasetClause() {
@@ -160,21 +157,6 @@ public class SPARQL11Parser extends SPARQL11Lexer {
                                 Optional(DOT()), Optional(Sequence(TriplesBlock(), addSubElement())))));
     }
 
-    public Rule TriplesBlock() {
-        return Sequence(push(new ElementPathBlock()), TriplesBlockSub());
-    }
-
-    public Rule TriplesBlockSub() {
-        return Sequence(TriplesSameSubject(),
-                Optional(Sequence(DOT(), Optional(TriplesBlockSub()))));
-    }
-
-
-    public Rule TriplesSameSubject() {
-        return FirstOf(
-                Sequence(Subj(), PropertyListNotEmpty(), drop()),
-                Sequence(TriplesNode(), PropertyList(), drop()));
-    }
 
     public Rule Subj() {
         return VarOrTerm();
@@ -271,19 +253,39 @@ public class SPARQL11Parser extends SPARQL11Lexer {
 
 
     public Rule TriplesTemplate() {
-        return Sequence(TriplesSameSubject(), push(((TripleBuilder) pop()).buildTemplate()), Optional(Sequence(DOT(),
-                Optional(Sequence(TriplesTemplate(), addTemplateToQuery())))));
+        return Sequence(push(new TripleCollectorBGP()), TriplesTemplateSub());
+    }
+
+    public Rule TriplesTemplateSub() {
+        return Sequence(TriplesSameSubject(), Optional(Sequence(DOT(),
+                Optional(TriplesTemplateSub()))));
+    }
+
+    public Rule TriplesBlock() {
+        return Sequence(push(new ElementPathBlock()), TriplesBlockSub());
+    }
+
+    public Rule TriplesBlockSub() {
+        return Sequence(TriplesSameSubject(),
+                Optional(Sequence(DOT(), Optional(TriplesBlockSub()))));
+    }
+
+
+    public Rule TriplesSameSubject() {
+        return FirstOf(
+                Sequence(Subj(), PropertyListNotEmpty(), drop()),
+                Sequence(TriplesNode(), PropertyList(), drop()));
     }
 
 
     public Rule ConstructTemplate() {
 
-        return Sequence(OPEN_CURLY_BRACE(), ConstructTriples(),
+        return Sequence(OPEN_CURLY_BRACE(), push(new TripleCollectorBGP()), ConstructTriples(),
                 CLOSE_CURLY_BRACE());
     }
 
     public Rule ConstructTriples() {
-        return Sequence(TriplesSameSubject(), push(((TripleBuilder) pop()).buildTemplate()), Optional(Sequence(DOT(),
+        return Sequence(TriplesSameSubject(), Optional(Sequence(DOT(),
                 Optional(ConstructTriples()))));
     }
 
@@ -300,14 +302,10 @@ public class SPARQL11Parser extends SPARQL11Lexer {
     }
 
     public Rule ObjectList() {
-        return Sequence(Object_(), addTripleToBloc(((ElementPathBlock) peek(3))),
-                ZeroOrMore(Sequence(COMMA(), Object_(), addTripleToBloc(((ElementPathBlock) peek(3))))));
+        return Sequence(Object_(), addTripleToBloc(((TripleCollector) peek(3))),
+                ZeroOrMore(Sequence(COMMA(), Object_(), addTripleToBloc(((TripleCollector) peek(3))))));
     }
 
-    public boolean addTripleToBloc(ElementPathBlock peek) {
-        peek.addTriple(new Triple((Node) peek(2), (Node) peek(1), (Node) pop()));
-        return true;
-    }
 
     public Rule Object_() {
         return GraphNode();
