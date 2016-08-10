@@ -3,7 +3,11 @@ package sparql;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Node_URI;
 import org.apache.jena.graph.Triple;
+import org.apache.jena.iri.IRI;
+import org.apache.jena.riot.checker.CheckerIRI;
+import org.apache.jena.riot.system.ErrorHandlerFactory;
 import org.apache.jena.riot.system.IRIResolver;
+import org.apache.jena.sparql.core.Prologue;
 import org.apache.jena.sparql.core.Var;
 import org.apache.jena.sparql.expr.Expr;
 import org.apache.jena.sparql.expr.aggregate.Aggregator;
@@ -28,6 +32,10 @@ public class Query {
     public Query(IRIResolver resolver) {
         this.q = new org.apache.jena.query.Query();
         this.q.setResolver(resolver);
+    }
+
+    public Query(Prologue prologue) {
+        this.q = new org.apache.jena.query.Query(prologue);
     }
 
     public Query setSelectQuery() {
@@ -188,7 +196,11 @@ public class Query {
 
     public String resolveSilent(String iriStr) {
         IRIResolver resolver = q.getPrologue().getResolver();
-        return resolver != null ? resolver.resolveSilent(iriStr).toString() : iriStr;
-
+        if (resolver != null) {
+            IRI iri = resolver.resolveSilent(iriStr);
+            CheckerIRI.iriViolations(iri, ErrorHandlerFactory.getDefaultErrorHandler());
+            return iri.toString();
+        }
+        return iriStr;
     }
 }

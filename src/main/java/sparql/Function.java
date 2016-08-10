@@ -15,17 +15,9 @@ public class Function {
     private final String iri;
     private Args args;
 
-    public Function(String match) {
-        this.iri = match;
-    }
-
-    public Function(Node_URI match) {
+    public Function(Args pop, Node_URI match) {
         this.iri = match.getURI();
-    }
-
-    public Object add(Args pop) {
         this.args = pop;
-        return this;
     }
 
     public String getIri() {

@@ -3,7 +3,6 @@ package sparql;
 import org.apache.jena.datatypes.RDFDatatype;
 import org.apache.jena.datatypes.TypeMapper;
 import org.apache.jena.graph.Node;
-import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.riot.system.IRIResolver;
 import org.apache.jena.sparql.core.Var;
@@ -100,7 +99,7 @@ public class QueryParser extends BaseParser<Object> {
     }
 
     public boolean createUnionElement() {
-        return push(new ElementUnion(popElement()));
+        return push(new ElementUnion());
     }
 
     public boolean addUnionElement() {
@@ -151,14 +150,13 @@ public class QueryParser extends BaseParser<Object> {
         return getQuery(-1).resolveSilent(trimMatch().replace(">", "").replace("<", ""));
     }
 
-    public boolean resolvePNAME(String match) {
+    public String resolvePNAME(String match) {
         //TODO I think this is correct beacause subqueries refer to the same prologue
-        String uri = getQuery(-1).getQ().getPrologue().expandPrefixedName(match);
-        return push(NodeFactory.createURI(uri));
+        String s = getQuery(-1).getQ().getPrologue().expandPrefixedName(match);
+        return s;
     }
 
     public RDFDatatype getSafeTypeByName(String uri) {
-        debug(uri);
         RDFDatatype safeTypeByName = TypeMapper.getInstance().getSafeTypeByName(uri);
         return safeTypeByName;
     }
