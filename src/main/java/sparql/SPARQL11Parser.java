@@ -562,12 +562,12 @@ public class SPARQL11Parser extends SPARQL11Lexer {
                 Sequence(IriRef(), push(new Function((Node_URI) pop())), ArgList()
                         , push(((Function) pop(1)).add((Args) pop())), FirstOf(addFunctionCall(), addAggregateFunctionCall())
                 ));
-    } 
+    }
 
     public Rule RdfLiteral() {
         return Sequence(String(), push(trimMatch().replace("\"", "")),
                 FirstOf(
-                        Sequence(LANGTAG(), push(NodeFactory.createLiteral(pop().toString(), match().substring(1)))),
+                        Sequence(LANGTAG(), push(NodeFactory.createLiteral(pop().toString(),trimMatch().substring(1)))),
                         Sequence(REFERENCE(), IriRef(), swap(),
                                 push(NodeFactory.createLiteral(pop().toString(),
                                         getSafeTypeByName(((Node_URI) pop()).getURI()))))
