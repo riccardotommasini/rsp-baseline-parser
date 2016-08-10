@@ -3,7 +3,8 @@ package sparql;
 import org.apache.commons.io.Charsets;
 import org.apache.commons.io.IOUtils;
 import org.apache.jena.query.QueryFactory;
-import org.apache.jena.query.QueryParseException;
+import org.apache.jena.riot.system.IRIResolver;
+import org.apache.jena.sparql.core.QueryCompare;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -65,11 +66,14 @@ public class Sparql11QueryTest {
         String input = readFileToString(new File(Sparql11QueryTest.class.getClassLoader().getResource(f).toURI()));
         System.out.println(input);
 
+        org.apache.jena.query.Query query1 = QueryFactory.create(input);
+
         SPARQL11Parser parser = Parboiled.createParser(SPARQL11Parser.class);
+        parser.setResolver(IRIResolver.create());
         ReportingParseRunner reportingParseRunner = new ReportingParseRunner(parser.Query());
         ParsingResult<Query> result = reportingParseRunner.run(input);
         org.apache.jena.query.Query q = result.parseTreeRoot.getChildren().get(0).getValue().getQ();
-        org.apache.jena.query.Query query1 = QueryFactory.create(input);
+        QueryCompare.PrintMessages = true;
         assertEquals(res, org.apache.jena.sparql.core.QueryCompare.equals(query1, q));
     }
 

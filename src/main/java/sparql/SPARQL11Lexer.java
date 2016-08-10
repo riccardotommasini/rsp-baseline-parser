@@ -20,9 +20,6 @@ package sparql;/*
  * THE SOFTWARE.
  */
 
-import org.apache.jena.datatypes.xsd.XSDDatatype;
-import org.apache.jena.graph.NodeFactory;
-import org.apache.jena.sparql.core.Var;
 import org.parboiled.Rule;
 import org.parboiled.annotations.BuildParseTree;
 
@@ -315,8 +312,7 @@ public class SPARQL11Lexer extends QueryParser {
     public Rule IRI_REF() {
         return Sequence(LESS_NO_COMMENT(), //
                 ZeroOrMore(Sequence(TestNot(FirstOf(LESS_NO_COMMENT(), GREATER(), '"', OPEN_CURLY_BRACE(),
-                        CLOSE_CURLY_BRACE(), '|', '^', '\\', '`', CharRange('\u0000', '\u0020'))), ANY)), //
-                GREATER());
+                        CLOSE_CURLY_BRACE(), '|', '^', '\\', '`', CharRange('\u0000', '\u0020'))), ANY)), GREATER());
     }
 
     public Rule BLANK_NODE_LABEL() {
@@ -341,10 +337,9 @@ public class SPARQL11Lexer extends QueryParser {
     }
 
     public Rule DECIMAL() {
-        return Sequence(FirstOf( //
-                Sequence(Sequence(OneOrMore(DIGIT()), DOT(), ZeroOrMore(DIGIT())), push(NodeFactory.createLiteral(match(), XSDDatatype.XSDdecimal))), //
-                Sequence(Sequence(DOT(), OneOrMore(DIGIT())), push(NodeFactory.createLiteral(match(), XSDDatatype.XSDdecimal))) //
-        ), WS());
+        return Sequence(FirstOf(
+                Sequence(OneOrMore(DIGIT()), DOT(), ZeroOrMore(DIGIT())),
+                Sequence(DOT(), OneOrMore(DIGIT()))), WS());
 
 
     }
@@ -352,8 +347,8 @@ public class SPARQL11Lexer extends QueryParser {
     public Rule DOUBLE() {
         return Sequence(FirstOf(
                 Sequence(OneOrMore(DIGIT()), DOT(), ZeroOrMore(DIGIT()), EXPONENT()),
-                Sequence(DOT(), OneOrMore(DIGIT()), EXPONENT())),
-                Sequence(OneOrMore(DIGIT()), EXPONENT()), WS());
+                Sequence(DOT(), OneOrMore(DIGIT()), EXPONENT()),
+                Sequence(OneOrMore(DIGIT()), EXPONENT())), WS());
     }
 
     public Rule INTEGER_POSITIVE() {

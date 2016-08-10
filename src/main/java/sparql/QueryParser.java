@@ -5,7 +5,7 @@ import org.apache.jena.datatypes.TypeMapper;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
-import org.apache.jena.iri.IRI;
+import org.apache.jena.riot.system.IRIResolver;
 import org.apache.jena.sparql.core.Var;
 import org.apache.jena.sparql.expr.Expr;
 import org.apache.jena.sparql.expr.ExprList;
@@ -22,18 +22,20 @@ import org.parboiled.BaseParser;
 public class QueryParser extends BaseParser<Object> {
 
     // NodeConst
-    protected final Node XSD_TRUE       = NodeConst.nodeTrue ;
-    protected final Node XSD_FALSE      = NodeConst.nodeFalse ;
+    protected final Node XSD_TRUE = NodeConst.nodeTrue;
+    protected final Node XSD_FALSE = NodeConst.nodeFalse;
 
-    protected final Node nRDFtype       = NodeConst.nodeRDFType ;
+    protected final Node nRDFtype = NodeConst.nodeRDFType;
 
-    protected final Node nRDFnil        = NodeConst.nodeNil ;
-    protected final Node nRDFfirst      = NodeConst.nodeFirst ;
-    protected final Node nRDFrest       = NodeConst.nodeRest ;
+    protected final Node nRDFnil = NodeConst.nodeNil;
+    protected final Node nRDFfirst = NodeConst.nodeFirst;
+    protected final Node nRDFrest = NodeConst.nodeRest;
 
-    protected final Node nRDFsubject    = RDF.Nodes.subject ;
-    protected final Node nRDFpredicate  = RDF.Nodes.predicate ;
-    protected final Node nRDFobject     = RDF.Nodes.object ;
+    protected final Node nRDFsubject = RDF.Nodes.subject;
+    protected final Node nRDFpredicate = RDF.Nodes.predicate;
+    protected final Node nRDFobject = RDF.Nodes.object;
+
+    private IRIResolver resolver;
 
 
     public Query getQuery(int i) {
@@ -106,7 +108,7 @@ public class QueryParser extends BaseParser<Object> {
         return true;
     }
 
-        public boolean addTripleToBloc(TripleCollector peek) {
+    public boolean addTripleToBloc(TripleCollector peek) {
         peek.addTriple(new Triple((Node) peek(2), (Node) peek(1), (Node) pop()));
         return true;
     }
@@ -123,6 +125,7 @@ public class QueryParser extends BaseParser<Object> {
         ((Args) peek(1)).add((Expr) pop());
         return true;
     }
+
     public boolean allocVariable(String s) {
         return push(Var.alloc(s.substring(1)));
     }
@@ -145,7 +148,7 @@ public class QueryParser extends BaseParser<Object> {
     }
 
     public String URIMatch() {
-        return getQuery(-1).resolveSilent(trimMatch().replace(">", "").replace("<", "")) ;
+        return getQuery(-1).resolveSilent(trimMatch().replace(">", "").replace("<", ""));
     }
 
     public boolean resolvePNAME(String match) {
@@ -158,5 +161,13 @@ public class QueryParser extends BaseParser<Object> {
         debug(uri);
         RDFDatatype safeTypeByName = TypeMapper.getInstance().getSafeTypeByName(uri);
         return safeTypeByName;
+    }
+
+    public void setResolver(IRIResolver resolver) {
+        this.resolver = resolver;
+    }
+
+    public IRIResolver getResolver() {
+        return resolver;
     }
 }

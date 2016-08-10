@@ -19,7 +19,7 @@ import org.parboiled.Rule;
 public class SPARQL11Parser extends SPARQL11Lexer {
 
     public Rule Query() {
-        return Sequence(push(new Query()), WS(), Prologue(), FirstOf(SelectQuery(), ConstructQuery(), AskQuery(), DescribeQuery())
+        return Sequence(push(new Query(getResolver())), WS(), Prologue(), FirstOf(SelectQuery(), ConstructQuery(), AskQuery(), DescribeQuery())
                 , EOI);
     }
 
@@ -28,7 +28,7 @@ public class SPARQL11Parser extends SPARQL11Lexer {
     }
 
     public Rule BaseDecl() {
-        return Sequence(BASE(), IRI_REF(), pushQuery(((Query) pop(0)).setBaseURI(trimMatch().replace(">", "").replace("<", ""))));
+        return Sequence(BASE(), IRI_REF(), pushQuery(((Query) pop(0)).setBaseURI(trimMatch().replace(">", "").replace("<", ""))), WS());
     }
 
     public Rule PrefixDecl() {
@@ -444,7 +444,7 @@ public class SPARQL11Parser extends SPARQL11Lexer {
                 Sequence(LANGMATCHES(), OPEN_BRACE(), Expression(), COMMA(),
                         Expression(), push(new E_LangMatches((Expr) pop(), (Expr) pop())), CLOSE_BRACE()),
                 Sequence(DATATYPE(), OPEN_BRACE(), Expression(), push(new E_Datatype((Expr) pop())), CLOSE_BRACE()),
-                Sequence(BOUND(), OPEN_BRACE(), Var(), push(new E_Bound(new ExprVar((String) pop()))), CLOSE_BRACE()),
+                Sequence(BOUND(), OPEN_BRACE(), Var(), push(new E_Bound(new ExprVar((Var) pop()))), CLOSE_BRACE()),
                 Sequence(BNODE(), OPEN_BRACE(), Expression(), push(new E_BNode((Expr) pop())), CLOSE_BRACE()),
                 Sequence(NIL(), push(new E_BNode())),
                 Sequence(RAND(), push(new E_Random())),
@@ -456,7 +456,7 @@ public class SPARQL11Parser extends SPARQL11Lexer {
 
                 Sequence(STRLEN(), OPEN_BRACE(), Expression(), push(new E_StrLength((Expr) pop())), CLOSE_BRACE()),
                 Sequence(UCASE(), OPEN_BRACE(), Expression(), push(new E_StrUpperCase((Expr) pop())), CLOSE_BRACE()),
-                Sequence(LCASE(), OPEN_BRACE(), Expression(), push(new E_StrUpperCase((Expr) pop())), CLOSE_BRACE()),
+                Sequence(LCASE(), OPEN_BRACE(), Expression(), push(new E_StrLowerCase((Expr) pop())), CLOSE_BRACE()),
                 Sequence(ENCODE_FOR_URI(), OPEN_BRACE(), Expression(), push(new E_StrEncodeForURI((Expr) pop())), CLOSE_BRACE()),
                 Sequence(CONTAINS(), OPEN_BRACE(), Expression(), COMMA(), Expression(), swap(), push(new E_StrContains((Expr) pop(), (Expr) pop())), CLOSE_BRACE()),
                 Sequence(SAME_TERM(), OPEN_BRACE(), Expression(), COMMA(), Expression(), swap(), push(new E_SameTerm((Expr) pop(), (Expr) pop())), CLOSE_BRACE()),
@@ -567,7 +567,7 @@ public class SPARQL11Parser extends SPARQL11Lexer {
     public Rule RdfLiteral() {
         return Sequence(String(), push(trimMatch().replace("\"", "")),
                 FirstOf(
-                        Sequence(LANGTAG(), push(NodeFactory.createLiteral(pop().toString(),trimMatch().substring(1)))),
+                        Sequence(LANGTAG(), push(NodeFactory.createLiteral(pop().toString(), trimMatch().substring(1)))),
                         Sequence(REFERENCE(), IriRef(), swap(),
                                 push(NodeFactory.createLiteral(pop().toString(),
                                         getSafeTypeByName(((Node_URI) pop()).getURI()))))

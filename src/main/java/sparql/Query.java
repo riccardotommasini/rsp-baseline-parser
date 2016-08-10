@@ -25,6 +25,11 @@ public class Query {
         this.q = new org.apache.jena.query.Query();
     }
 
+    public Query(IRIResolver resolver) {
+        this.q = new org.apache.jena.query.Query();
+        this.q.setResolver(resolver);
+    }
+
     public Query setSelectQuery() {
         q.setQuerySelectType();
         return this;

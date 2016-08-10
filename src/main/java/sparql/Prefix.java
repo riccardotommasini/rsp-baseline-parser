@@ -1,6 +1,7 @@
 package sparql;
 
 import lombok.ToString;
+import org.apache.jena.base.Sys;
 
 /**
  * Created by Riccardo on 06/08/16.
