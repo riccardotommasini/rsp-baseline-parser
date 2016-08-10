@@ -3,6 +3,7 @@ package sparql;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Node_URI;
 import org.apache.jena.graph.Triple;
+import org.apache.jena.riot.system.IRIResolver;
 import org.apache.jena.sparql.core.Var;
 import org.apache.jena.sparql.expr.Expr;
 import org.apache.jena.sparql.expr.aggregate.Aggregator;
@@ -178,5 +179,11 @@ public class Query {
         q.addDescribeNode(pop);
         q.setQueryResultStar(false);
         return this;
+    }
+
+    public String resolveSilent(String iriStr) {
+        IRIResolver resolver = q.getPrologue().getResolver();
+        return resolver != null ? resolver.resolveSilent(iriStr).toString() : iriStr;
+
     }
 }

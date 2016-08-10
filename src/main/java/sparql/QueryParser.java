@@ -1,20 +1,41 @@
 package sparql;
 
+import org.apache.jena.datatypes.RDFDatatype;
+import org.apache.jena.datatypes.TypeMapper;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.graph.Triple;
+import org.apache.jena.iri.IRI;
 import org.apache.jena.sparql.core.Var;
 import org.apache.jena.sparql.expr.Expr;
 import org.apache.jena.sparql.expr.ExprList;
 import org.apache.jena.sparql.expr.aggregate.Args;
+import org.apache.jena.sparql.graph.NodeConst;
 import org.apache.jena.sparql.syntax.*;
 import org.apache.jena.sparql.util.ExprUtils;
+import org.apache.jena.vocabulary.RDF;
 import org.parboiled.BaseParser;
 
 /**
  * Created by Riccardo on 09/08/16.
  */
 public class QueryParser extends BaseParser<Object> {
+
+    // NodeConst
+    protected final Node XSD_TRUE       = NodeConst.nodeTrue ;
+    protected final Node XSD_FALSE      = NodeConst.nodeFalse ;
+
+    protected final Node nRDFtype       = NodeConst.nodeRDFType ;
+
+    protected final Node nRDFnil        = NodeConst.nodeNil ;
+    protected final Node nRDFfirst      = NodeConst.nodeFirst ;
+    protected final Node nRDFrest       = NodeConst.nodeRest ;
+
+    protected final Node nRDFsubject    = RDF.Nodes.subject ;
+    protected final Node nRDFpredicate  = RDF.Nodes.predicate ;
+    protected final Node nRDFobject     = RDF.Nodes.object ;
+
+
     public Query getQuery(int i) {
         if (i == -1) {
             int size = getContext().getValueStack().size();
@@ -124,12 +145,18 @@ public class QueryParser extends BaseParser<Object> {
     }
 
     public String URIMatch() {
-        return trimMatch().replace(">", "").replace("<", "");
+        return getQuery(-1).resolveSilent(trimMatch().replace(">", "").replace("<", "")) ;
     }
 
     public boolean resolvePNAME(String match) {
         //TODO I think this is correct beacause subqueries refer to the same prologue
         String uri = getQuery(-1).getQ().getPrologue().expandPrefixedName(match);
         return push(NodeFactory.createURI(uri));
+    }
+
+    public RDFDatatype getSafeTypeByName(String uri) {
+        debug(uri);
+        RDFDatatype safeTypeByName = TypeMapper.getInstance().getSafeTypeByName(uri);
+        return safeTypeByName;
     }
 }

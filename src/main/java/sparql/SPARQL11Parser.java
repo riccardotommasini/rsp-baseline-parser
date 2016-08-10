@@ -28,7 +28,7 @@ public class SPARQL11Parser extends SPARQL11Lexer {
     }
 
     public Rule BaseDecl() {
-        return Sequence(BASE(), IRI_REF(), pushQuery(((Query) pop(1)).setBaseURI(URIMatch())));
+        return Sequence(BASE(), IRI_REF(), pushQuery(((Query) pop(0)).setBaseURI(trimMatch().replace(">", "").replace("<", ""))));
     }
 
     public Rule PrefixDecl() {
@@ -78,8 +78,8 @@ public class SPARQL11Parser extends SPARQL11Lexer {
                 FirstOf(Sequence(ASTERISK(), pushQuery(popQuery(0).setQueryStar())),
                         OneOrMore(
                                 FirstOf(
-                                        Sequence(VarNode(), pushQuery(((Query) pop(1)).addResultVar((Node) pop()))),
-                                        Sequence(OPEN_BRACE(), Expression(), AS(), VarNode(), CLOSE_BRACE(),
+                                        Sequence(Var(), pushQuery(((Query) pop(1)).addResultVar((Node) pop()))),
+                                        Sequence(OPEN_BRACE(), Expression(), AS(), Var(), CLOSE_BRACE(),
                                                 pushQuery(((Query) pop(2)).addResultVar((Node) pop(), (Expr) pop())))))));
     }
 
@@ -158,22 +158,18 @@ public class SPARQL11Parser extends SPARQL11Lexer {
     }
 
 
-    public Rule Subj() {
-        return VarOrTerm();
-    }
-
     public Rule GroupCondition() {
-        return FirstOf(Sequence(VarNode(), pushQuery(((Query) pop(1)).addGroupBy((Var) pop()))),
+        return FirstOf(Sequence(Var(), pushQuery(((Query) pop(1)).addGroupBy((Var) pop()))),
                 Sequence(BuiltInCall(), pushQuery(((Query) pop(1)).addGroupBy((Expr) pop()))),
                 Sequence(FunctionCall(), pushQuery(((Query) pop(1)).addGroupBy((Expr) pop()))),
-                Sequence(OPEN_BRACE(), Expression(), AS(), VarNode(), CLOSE_BRACE(), pushQuery(((Query) pop(2)).addGroupBy((Var) pop(), (Expr) pop())))
+                Sequence(OPEN_BRACE(), Expression(), AS(), Var(), CLOSE_BRACE(), pushQuery(((Query) pop(2)).addGroupBy((Var) pop(), (Expr) pop())))
         );
     }
 
     public Rule OrderCondition() {
         return FirstOf(
                 Sequence(FirstOf(ASC(), DESC()), BrackettedExpression(), pushQuery(((Query) pop(2)).addOrderBy((Expr) pop(), pop().toString()))),
-                Sequence(FirstOf(Constraint(), VarNode()), pushQuery(((Query) pop(1)).addOrderBy(pop()))));
+                Sequence(FirstOf(Constraint(), Var()), pushQuery(((Query) pop(1)).addOrderBy(pop()))));
     }
 
 
@@ -182,13 +178,13 @@ public class SPARQL11Parser extends SPARQL11Lexer {
     }
 
 
-    public Rule Filter() {
-        return Sequence(FILTER(), FilterConstraint(), addFilterElement());
-    }
-
     public Rule GraphPatternNotTriples() {
         return FirstOf(Filter(), OptionalGraphPattern(), GroupOrUnionGraphPattern(),
                 GraphGraphPattern(), SubSelect());
+    }
+
+    public Rule Filter() {
+        return Sequence(FILTER(), FilterConstraint(), addFilterElement());
     }
 
     public Rule OptionalGraphPattern() {
@@ -311,8 +307,12 @@ public class SPARQL11Parser extends SPARQL11Lexer {
         return GraphNode();
     }
 
+    public Rule Subj() {
+        return VarOrTerm();
+    }
+
     public Rule Verb() {
-        return FirstOf(VarOrIRIref(), A());
+        return FirstOf(VarOrIRIref(), Sequence(A(), push(nRDFtype)));
     }
 
     public Rule TriplesNode() {
@@ -333,23 +333,15 @@ public class SPARQL11Parser extends SPARQL11Lexer {
     }
 
     public Rule VarOrTerm() {
-        return FirstOf(VarNode(), GraphTerm());
-    }
-
-    public Rule VarNode() {
-        return Sequence(Var(), allocVariable(trimMatch()));
-    }
-
-    public Rule VarNodeUnTrimmed() {
-        return Sequence(Var(), allocVariable(trimMatch()));
-    }
-
-    public Rule VarOrIRIref() {
-        return FirstOf(VarNode(), IriRef());
+        return FirstOf(Var(), GraphTerm());
     }
 
     public Rule Var() {
-        return FirstOf(VAR1(), VAR2());
+        return Sequence(FirstOf(VAR1(), VAR2()), allocVariable(trimMatch()));
+    }
+
+    public Rule VarOrIRIref() {
+        return FirstOf(Var(), IriRef());
     }
 
     public Rule GraphTerm() {
@@ -359,7 +351,6 @@ public class SPARQL11Parser extends SPARQL11Lexer {
     }
 
     public Rule ExpressionList() {
-
         return Sequence(OPEN_BRACE(), Expression(), push(new ExprList((Expr) pop())), ZeroOrMore(Sequence(COMMA(), Expression(), addExprToExprList())), CLOSE_BRACE());
     }
 
@@ -370,12 +361,12 @@ public class SPARQL11Parser extends SPARQL11Lexer {
 
     public Rule ConditionalOrExpression() {
         return Sequence(ConditionalAndExpression(), ZeroOrMore(Sequence(OR(),
-                ConditionalAndExpression()), push(new E_LogicalOr((Expr) pop(), (Expr) pop()))));
+                ConditionalAndExpression()), swap(), push(new E_LogicalOr((Expr) pop(), (Expr) pop()))));
     }
 
     public Rule ConditionalAndExpression() {
         return Sequence(ValueLogical(), ZeroOrMore(Sequence(AND(),
-                ValueLogical(), push(new E_LogicalAnd((Expr) pop(), (Expr) pop())))));
+                ValueLogical(), swap(), push(new E_LogicalAnd((Expr) pop(), (Expr) pop())))));
     }
 
     public Rule ValueLogical() {
@@ -415,15 +406,22 @@ public class SPARQL11Parser extends SPARQL11Lexer {
     }
 
     public Rule UnaryExpression() {
-        return FirstOf(Sequence(NOT(), PrimaryExpression()), Sequence(PLUS(),
-                PrimaryExpression()), Sequence(MINUS(), PrimaryExpression()),
+        return FirstOf(
+                Sequence(NOT(), PrimaryExpression(), push(new E_LogicalNot((Expr) pop()))),
+                Sequence(PLUS(), PrimaryExpression()),
+                Sequence(MINUS(), PrimaryExpression()),
                 PrimaryExpression());
     }
 
     public Rule PrimaryExpression() {
-        return FirstOf(BrackettedExpression(), BuiltInCall(),
-                IriRefOrFunction(), Sequence(RdfLiteral(), asExpr()), Sequence(NumericLiteral(), asExpr()),
-                Sequence(BooleanLiteral(), asExpr()), Sequence(VarNode(), asExpr()));
+        return FirstOf(
+                BrackettedExpression(),
+                BuiltInCall(),
+                IriRefOrFunction(),
+                Sequence(RdfLiteral(), asExpr()),
+                Sequence(NumericLiteral(), asExpr()),
+                Sequence(BooleanLiteral(), asExpr()),
+                Sequence(Var(), asExpr()));
     }
 
     public Rule BrackettedExpression() {
@@ -446,7 +444,7 @@ public class SPARQL11Parser extends SPARQL11Lexer {
                 Sequence(LANGMATCHES(), OPEN_BRACE(), Expression(), COMMA(),
                         Expression(), push(new E_LangMatches((Expr) pop(), (Expr) pop())), CLOSE_BRACE()),
                 Sequence(DATATYPE(), OPEN_BRACE(), Expression(), push(new E_Datatype((Expr) pop())), CLOSE_BRACE()),
-                Sequence(BOUND(), OPEN_BRACE(), VarNode(), push(new E_Bound(new ExprVar((String) pop()))), CLOSE_BRACE()),
+                Sequence(BOUND(), OPEN_BRACE(), Var(), push(new E_Bound(new ExprVar((String) pop()))), CLOSE_BRACE()),
                 Sequence(BNODE(), OPEN_BRACE(), Expression(), push(new E_BNode((Expr) pop())), CLOSE_BRACE()),
                 Sequence(NIL(), push(new E_BNode())),
                 Sequence(RAND(), push(new E_Random())),
@@ -464,7 +462,10 @@ public class SPARQL11Parser extends SPARQL11Lexer {
                 Sequence(SAME_TERM(), OPEN_BRACE(), Expression(), COMMA(), Expression(), swap(), push(new E_SameTerm((Expr) pop(), (Expr) pop())), CLOSE_BRACE()),
                 Sequence(STRDT(), OPEN_BRACE(), Expression(), COMMA(), Expression(), swap(), push(new E_StrDatatype((Expr) pop(), (Expr) pop())), CLOSE_BRACE()),
                 Sequence(STRLANG(), OPEN_BRACE(), Expression(), COMMA(), Expression(), swap(), push(new E_StrLang((Expr) pop(), (Expr) pop())), CLOSE_BRACE()),
+
                 Sequence(IF(), OPEN_BRACE(), Expression(), COMMA(), Expression(), COMMA(), Expression(), swap3(), push(new E_Conditional((Expr) pop(), (Expr) pop(), (Expr) pop())), CLOSE_BRACE()),
+
+
                 Sequence(SUBSTR(), OPEN_BRACE(), Expression(), COMMA(), Expression(), COMMA(), Expression(), swap3(), push(new E_StrSubstring((Expr) pop(), (Expr) pop(), (Expr) pop())), CLOSE_BRACE()),
                 Sequence(REPLACE(), OPEN_BRACE(), Expression(), COMMA(), Expression(), COMMA(), Expression(), COMMA(), Expression(), swap4(), push(new E_StrReplace((Expr) pop(), (Expr) pop(), (Expr) pop(), (Expr) pop())), CLOSE_BRACE()), //TODO check swap4
 
@@ -557,15 +558,22 @@ public class SPARQL11Parser extends SPARQL11Lexer {
     }
 
     public Rule IriRefOrFunction() {
-        return Sequence(IriRef(), push(new Function((Node_URI) pop())), Optional(Sequence(ArgList()
-                , push(((Function) pop(1)).add((Args) pop())), FirstOf(addFunctionCall(), addAggregateFunctionCall())
-        )));
-    }
+        return FirstOf(Sequence(IriRef(), asExpr()),
+                Sequence(IriRef(), push(new Function((Node_URI) pop())), ArgList()
+                        , push(((Function) pop(1)).add((Args) pop())), FirstOf(addFunctionCall(), addAggregateFunctionCall())
+                ));
+    } 
 
     public Rule RdfLiteral() {
-        return Sequence(String(), push(NodeFactory.createLiteralByValue(trimMatch().replace("\"", ""), XSDDatatype.XSDstring)), Optional(FirstOf(LANGTAG(), Sequence(
-                REFERENCE(), IriRef()))));
+        return Sequence(String(), push(trimMatch().replace("\"", "")),
+                FirstOf(
+                        Sequence(LANGTAG(), push(NodeFactory.createLiteral(pop().toString(), match().substring(1)))),
+                        Sequence(REFERENCE(), IriRef(), swap(),
+                                push(NodeFactory.createLiteral(pop().toString(),
+                                        getSafeTypeByName(((Node_URI) pop()).getURI()))))
+                        , push(NodeFactory.createLiteral(pop().toString()))));
     }
+
 
     public Rule NumericLiteral() {
         return FirstOf(NumericLiteralUnsigned(), NumericLiteralPositive(),
@@ -595,7 +603,8 @@ public class SPARQL11Parser extends SPARQL11Lexer {
     }
 
     public Rule BooleanLiteral() {
-        return Sequence(FirstOf(TRUE(), FALSE()), push(NodeFactory.createLiteralByValue(trimMatch(), XSDDatatype.XSDboolean)));
+        return Sequence(FirstOf(TRUE(), FALSE()), push(NodeFactory.createLiteralByValue(trimMatch(), XSDDatatype.XSDboolean))
+                , Optional(REFERENCE(), IriRef(), drop()));
     }
 
     public Rule String() {
