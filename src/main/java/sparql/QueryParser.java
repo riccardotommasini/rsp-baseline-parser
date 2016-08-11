@@ -207,4 +207,42 @@ public class QueryParser extends BaseParser<Object> {
     public IRIResolver getResolver() {
         return resolver;
     }
+
+    public boolean addValuesToQuery() {
+        ValuesClauseBuilder vcb = (ValuesClauseBuilder) pop();
+        getQuery(0).getQ().setValuesDataBlock(vcb.getElm().getVars(), vcb.getElm().getRows());
+        return true;
+    }
+
+    public boolean startDataBlockValueRow(int i) {
+        ValuesClauseBuilder pop = (ValuesClauseBuilder) peek(i);
+        pop.addBinding();
+        pop.currentColumn = -1;
+        return true;
+    }
+
+    public boolean emitDataBlockValue(Node n) {
+
+        ValuesClauseBuilder pop = (ValuesClauseBuilder) peek();
+        pop.currentColumn++;
+
+        if (pop.isValid() && n != null) {
+            Var v = pop.getElm().getVars().get(pop.currentColumn);
+            pop.currentValueRow().add(v, n);
+        }
+
+        return true;
+    }
+
+    public boolean emitDataBlockVariable(Var v) {
+        return push(((ValuesClauseBuilder) pop()).addVar(v));
+    }
+
+    public boolean startSubQuery(int i) {
+        return push(new Query(getQuery(i).getQ().getPrologue()));
+    }
+
+    public boolean endSubQuery() {
+        return push(new ElementSubQuery(popQuery(0).getQ()));
+    }
 }

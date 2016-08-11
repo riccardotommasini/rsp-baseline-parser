@@ -70,7 +70,6 @@ public class SPARQL11Parser extends SPARQL11Lexer {
     }
 
     public Rule SelectClause() {
-        debug("SelectClause");
         return Sequence(SELECT(), pushQuery(popQuery(0).setSelectQuery()),
                 Optional(
                         FirstOf(
@@ -83,7 +82,6 @@ public class SPARQL11Parser extends SPARQL11Lexer {
                                         Sequence(OPEN_BRACE(), Expression(), AS(), Var(), CLOSE_BRACE(),
                                                 pushQuery(((Query) pop(2)).addResultVar((Node) pop(), (Expr) pop())))))));
     }
-
 
     public Rule ConstructWhereClause() {
         return Sequence(CONSTRUCT(), pushQuery(popQuery(0).setConstructQuery()),
@@ -130,7 +128,6 @@ public class SPARQL11Parser extends SPARQL11Lexer {
         return Sequence(ORDER(), BY(), OneOrMore(OrderCondition()));
     }
 
-
     public Rule LimitOffsetClauses() {
         return FirstOf(Sequence(LimitClause(), Optional(OffsetClause())),
                 Sequence(OffsetClause(), Optional(LimitClause())));
@@ -146,12 +143,6 @@ public class SPARQL11Parser extends SPARQL11Lexer {
 
     public Rule ValuesClause() {
         return ZeroOrMore(Sequence(VALUES(), DataBlock(), addValuesToQuery()));
-    }
-
-    public boolean addValuesToQuery() {
-        ValuesClauseBuilder vcb = (ValuesClauseBuilder) pop();
-        getQuery(0).getQ().setValuesDataBlock(vcb.getElm().getVars(), vcb.getElm().getRows());
-        return true;
     }
 
     public Rule DataBlock() {
@@ -181,30 +172,6 @@ public class SPARQL11Parser extends SPARQL11Lexer {
                         )), CLOSE_CURLY_BRACE()));
     }
 
-    public boolean startDataBlockValueRow(int i) {
-        ValuesClauseBuilder pop = (ValuesClauseBuilder) peek(i);
-        pop.addBinding();
-        pop.currentColumn = -1;
-        return true;
-    }
-
-    public boolean emitDataBlockValue(Node n) {
-
-        ValuesClauseBuilder pop = (ValuesClauseBuilder) peek();
-        pop.currentColumn++;
-
-        if (pop.isValid() && n != null) {
-            Var v = pop.getElm().getVars().get(pop.currentColumn);
-            pop.currentValueRow().add(v, n);
-        }
-
-        return true;
-    }
-
-    public boolean emitDataBlockVariable(Var v) {
-        return push(((ValuesClauseBuilder) pop()).addVar(v));
-    }
-
     public Rule DataBlockValue() {
         return FirstOf(UNDEF(), IriRef(), RdfLiteral(), NumericLiteral(), BooleanLiteral());
     }
@@ -213,17 +180,8 @@ public class SPARQL11Parser extends SPARQL11Lexer {
         return Sequence(OPEN_CURLY_BRACE(), FirstOf(SubSelect(), GroupGraphPatternSub()), CLOSE_CURLY_BRACE());
     }
 
-
     public Rule SubSelect() {
         return Sequence(startSubQuery(-1), SelectClause(), WhereClause(), SolutionModifiers(), ValuesClause(), endSubQuery());
-    }
-
-    public boolean startSubQuery(int i) {
-        return push(new Query(getQuery(i).getQ().getPrologue()));
-    }
-
-    public boolean endSubQuery() {
-        return push(new ElementSubQuery(popQuery(0).getQ()));
     }
 
     public Rule GroupGraphPatternSub() {
@@ -231,7 +189,6 @@ public class SPARQL11Parser extends SPARQL11Lexer {
                 ZeroOrMore(GraphPatternNotTriples(), addSubElement(), Optional(DOT()),
                         Optional(TriplesBlock(), addSubElement())));
     }
-
 
     public Rule GroupCondition() {
         return FirstOf(
@@ -251,11 +208,9 @@ public class SPARQL11Parser extends SPARQL11Lexer {
                 Sequence(FirstOf(Constraint(), Var()), pushQuery(((Query) pop(1)).addOrderBy(pop()))));
     }
 
-
     public Rule SourceSelector() {
         return IriRef();
     }
-
 
     public Rule GraphPatternNotTriples() {
         return FirstOf(GroupOrUnionGraphPattern(), OptionalGraphPattern(), MinusGraphPattern(), GraphGraphPattern(), ServiceGraphPattern(), Filter(), Bind(), InlineData());
@@ -267,7 +222,6 @@ public class SPARQL11Parser extends SPARQL11Lexer {
                         Sequence(SILENT(), push(new Boolean(true))),
                         push(new Boolean(false))), VarOrIRIref(), GroupGraphPattern(), push(new ElementService((Node) pop(1), (Element) pop(), (Boolean) pop())));
     }
-
 
     public Rule Bind() {
         return Sequence(BIND(), OPEN_BRACE(), Expression(), AS(), Var(), CLOSE_BRACE(), push(new ElementBind((Var) pop(), (Expr) pop())));
@@ -310,7 +264,6 @@ public class SPARQL11Parser extends SPARQL11Lexer {
         return FirstOf(BrackettedExpression(), BuiltInCall(), FunctionCall());
     }
 
-
     public Rule GroupContant() {
         return Sequence(GROUP_CONCAT(),
                 OPEN_BRACE(),
@@ -326,7 +279,6 @@ public class SPARQL11Parser extends SPARQL11Lexer {
                                 (Expr) pop(), trimMatch(), new ExprList()))
                 ), CLOSE_BRACE());
     }
-
 
     public Rule TriplesTemplate() {
         return Sequence(push(new TripleCollectorBGP()), TriplesTemplateSub());
@@ -346,23 +298,19 @@ public class SPARQL11Parser extends SPARQL11Lexer {
                 DOT(), Optional(TriplesBlockSub())));
     }
 
-
     public Rule TriplesSameSubject() {
         return FirstOf(
                 Sequence(Subj(), PropertyListNotEmpty(), drop()),
                 Sequence(TriplesNode(), PropertyList(), drop()));
     }
 
-
     public Rule ConstructTemplate() {
         return Sequence(OPEN_CURLY_BRACE(), bNodeOn(), push(new TripleCollectorBGP()), ConstructTriples(), bNodeOff(), CLOSE_CURLY_BRACE());
     }
 
-
     public Rule ConstructTriples() {
         return Sequence(TriplesSameSubject(), Optional(Sequence(DOT(), Optional(ConstructTriples()))));
     }
-
 
     public Rule PropertyListNotEmpty() {
         return Sequence(Sequence(Verb(), ObjectList(), drop())
@@ -378,7 +326,6 @@ public class SPARQL11Parser extends SPARQL11Lexer {
         return Sequence(Object_(), addTripleToBloc(((TripleCollector) peek(3))),
                 ZeroOrMore(Sequence(COMMA(), Object_(), addTripleToBloc(((TripleCollector) peek(3))))));
     }
-
 
     public Rule Object_() {
         return GraphNode();
@@ -430,7 +377,6 @@ public class SPARQL11Parser extends SPARQL11Lexer {
     public Rule ExpressionList() {
         return FirstOf(Sequence(NIL2(), push(new ExprList())), Sequence(OPEN_BRACE(), Expression(), push(new ExprList((Expr) pop())), ZeroOrMore(COMMA(), Expression(), addExprToExprList()), CLOSE_BRACE()));
     }
-
 
     public Rule Expression() {
         return ConditionalOrExpression();
@@ -629,7 +575,6 @@ public class SPARQL11Parser extends SPARQL11Lexer {
                 CLOSE_BRACE());
     }
 
-
     public Rule RegexExpression() {
         return Sequence(REGEX(), OPEN_BRACE(), Expression(), COMMA(), Expression(),
                 FirstOf(
@@ -652,7 +597,6 @@ public class SPARQL11Parser extends SPARQL11Lexer {
         return Sequence(Test((AggregateRegistry.isRegistered(((Function) peek()).getIri()))),
                 push(getQuery(1).allocAggregate(((Function) pop()).createCustom())));
     }
-
 
     public Rule ArgList() {
         return Sequence(push(new Args()),
@@ -683,7 +627,6 @@ public class SPARQL11Parser extends SPARQL11Lexer {
                 Sequence(DECIMAL(), push(NodeFactory.createLiteral(trimMatch(), XSDDatatype.XSDdecimal))),
                 Sequence(INTEGER(), push(NodeFactory.createLiteral(trimMatch(), XSDDatatype.XSDinteger))));
     }
-
 
     public Rule NumericLiteralPositive() {
         return FirstOf(
