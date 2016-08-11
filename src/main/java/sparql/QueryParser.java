@@ -12,8 +12,12 @@ import org.apache.jena.sparql.expr.aggregate.Args;
 import org.apache.jena.sparql.graph.NodeConst;
 import org.apache.jena.sparql.syntax.*;
 import org.apache.jena.sparql.util.ExprUtils;
+import org.apache.jena.sparql.util.LabelToNodeMap;
 import org.apache.jena.vocabulary.RDF;
 import org.parboiled.BaseParser;
+
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Created by Riccardo on 09/08/16.
@@ -34,8 +38,37 @@ public class QueryParser extends BaseParser<Object> {
     protected final Node nRDFpredicate = RDF.Nodes.predicate;
     protected final Node nRDFobject = RDF.Nodes.object;
 
+    // Graph patterns, true; in templates, false.
+    private boolean bNodesAreVariables = true;
+    // In DELETE, false.
+    private boolean bNodesAreAllowed = true;
+
+    // label => bNode for construct templates patterns
+    final LabelToNodeMap bNodeLabels = LabelToNodeMap.createBNodeMap();
+
+    // label => bNode (as variable) for graph patterns
+    final LabelToNodeMap anonVarLabels = LabelToNodeMap.createVarMap();
+
+    // This is the map used allocate blank node labels during parsing.
+    // 1/ It is different between CONSTRUCT and the query pattern
+    // 2/ Each BasicGraphPattern is a scope for blank node labels so each
+    //    BGP causes the map to be cleared at the start of the BGP
+
+    LabelToNodeMap activeLabelMap = anonVarLabels;
+    Set<String> previousLabels = new HashSet<String>();
+
     private IRIResolver resolver;
 
+
+    public boolean bNodeOff() {
+        activeLabelMap = bNodeLabels;
+        return activeLabelMap.equals(bNodeLabels);
+    }
+
+    public boolean bNodeOn() {
+        activeLabelMap = anonVarLabels;
+        return activeLabelMap.equals(anonVarLabels);
+    }
 
     public Query getQuery(int i) {
         if (i == -1) {

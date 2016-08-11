@@ -3,8 +3,10 @@ package sparql;
 import org.apache.commons.io.Charsets;
 import org.apache.commons.io.IOUtils;
 import org.apache.jena.query.QueryFactory;
+import org.apache.jena.query.QueryParseException;
 import org.apache.jena.riot.system.IRIResolver;
 import org.apache.jena.sparql.core.QueryCompare;
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -42,8 +44,8 @@ public class Sparql11QueryTest {
             if (!d.contains("class")) {
                 for (String f : IOUtils.readLines(Sparql11QueryTest.class.getClassLoader()
                         .getResourceAsStream(folder + d + "/"), Charsets.UTF_8)) {
-                    if (!f.contains(".arq")) {
-                        obj.add(new Object[]{(folder + d + "/" + f), !f.contains("false")});
+                    if (!f.contains(".arq") && !f.contains(".sh") && (!f.contains("false") || !f.contains("bad"))) {
+                        obj.add(new Object[]{(folder + d + "/" + f), true});
                     }
                 }
             }
@@ -56,18 +58,33 @@ public class Sparql11QueryTest {
         this.f = f;
     }
 
+    static String input;
+    static org.apache.jena.query.Query toCompare;
 
-    @Test
-    public void test() throws URISyntaxException, IOException {
-        (new Sparql11QueryTest(f, res)).process();
+    @Before
+    public void load() throws URISyntaxException, IOException {
+
+
     }
 
-    public static void process() throws IOException, URISyntaxException {
-        System.out.println(f);
-        String input = readFileToString(new File(Sparql11QueryTest.class.getClassLoader().getResource(f).toURI()));
-        System.out.println(input);
+    @Test
+    public void test() {
+        try {
+            (new Sparql11QueryTest(f, res)).process();
+        } catch (URISyntaxException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }catch (QueryParseException epe){
+            epe.printStackTrace();
+        }
+    }
 
-        org.apache.jena.query.Query query1 = QueryFactory.create(input);
+    public static void process() throws URISyntaxException, IOException {
+        System.out.println(f);
+        input = readFileToString(new File(Sparql11QueryTest.class.getClassLoader().getResource(f).toURI()));
+        System.out.println(input);
+        toCompare = QueryFactory.create(input);
 
         SPARQL11Parser parser = Parboiled.createParser(SPARQL11Parser.class);
         parser.setResolver(IRIResolver.create());
@@ -86,7 +103,7 @@ public class Sparql11QueryTest {
         }
         org.apache.jena.query.Query q = result.parseTreeRoot.getChildren().get(0).getValue().getQ();
         QueryCompare.PrintMessages = true;
-        assertEquals(res, org.apache.jena.sparql.core.QueryCompare.equals(query1, q));
+        assertEquals(res, org.apache.jena.sparql.core.QueryCompare.equals(toCompare, q));
     }
 
 

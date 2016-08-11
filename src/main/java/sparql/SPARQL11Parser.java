@@ -20,7 +20,7 @@ import org.parboiled.Rule;
 public class SPARQL11Parser extends SPARQL11Lexer {
 
     public Rule Query() {
-        return Sequence(push(new Query(getResolver())), WS(), Prologue(), FirstOf(SelectQuery(), ConstructQuery(), AskQuery(), DescribeQuery())
+        return Sequence(push(new Query(getResolver())), WS(), Prologue(), FirstOf(SelectQuery(), ConstructQuery(), AskQuery(), DescribeQuery()), ValuesClause()
                 , EOI);
     }
 
@@ -141,6 +141,75 @@ public class SPARQL11Parser extends SPARQL11Lexer {
         return Sequence(OFFSET(), INTEGER(), pushQuery(popQuery(0).setOffset(match())));
     }
 
+    public Rule ValuesClause() {
+        return ZeroOrMore(Sequence(VALUES(), DataBlock(), addValuesToQuery()));
+    }
+
+
+    public boolean addValuesToQuery() {
+        ValuesClauseBuilder vcb = (ValuesClauseBuilder) pop();
+        getQuery(1).getQ().setValuesDataBlock(vcb.getElm().getVars(), vcb.getElm().getRows());
+        return true;
+    }
+
+    public Rule DataBlock() {
+        return Sequence(push(new ValuesClauseBuilder()), FirstOf(InlineDataOneVar(), InlineDataFull()));
+    }
+
+    public Rule InlineDataFull() {
+        return Sequence(OPEN_BRACE(), ZeroOrMore(Var(), emitDataBlockVariable((Var) pop())), CLOSE_BRACE(),
+                OPEN_CURLY_BRACE(),
+                ZeroOrMore(OPEN_BRACE(), startDataBlockValueRow(0),
+                        ZeroOrMore(DataBlockValue(),
+                                FirstOf(Sequence(Test(peek() instanceof Node)
+                                        , emitDataBlockValue((Node) pop())),
+                                        Sequence(TestNot(peek() instanceof Node)
+                                                , emitDataBlockValue(null)))), CLOSE_BRACE()),
+                CLOSE_CURLY_BRACE());
+    }
+
+    public Rule InlineDataOneVar() {
+        return Sequence(Var(), emitDataBlockVariable((Var) pop()), OPEN_CURLY_BRACE(), ZeroOrMore(DataBlockValue(), Sequence(Test(peek() instanceof Node)
+                , startDataBlockValueRow(1), emitDataBlockValue((Node) pop()))
+
+        ), CLOSE_CURLY_BRACE());
+    }
+
+    public boolean startDataBlockValueRow(int i) {
+        ValuesClauseBuilder pop = (ValuesClauseBuilder) peek(i);
+        pop.addBinding();
+        pop.currentColumn = -1;
+        return true;
+    }
+
+    public boolean emitDataBlockValue(Node n) {
+
+        ValuesClauseBuilder pop = (ValuesClauseBuilder) peek(0);
+        pop.currentColumn++;
+
+        if (pop.isValid() && n != null) {
+            Var v = pop.getElm().getVars().get(pop.currentColumn);
+            pop.currentValueRow().add(v, n);
+        }
+
+        return true;
+    }
+
+    public boolean emitDataBlockVariable(Var v) {
+        return push(((ValuesClauseBuilder) pop()).addVar(v));
+    }
+
+    public Rule DataBlockValue() {
+        return FirstOf(UNDEF(), IriRef(), RdfLiteral(), NumericLiteral(), BooleanLiteral());
+    }
+
+    public Rule UNDEF() {
+        return StringIgnoreCaseWS("UNDEF");
+    }
+
+    public Rule VALUES() {
+        return StringIgnoreCaseWS("VALUES");
+    }
 
     public Rule GroupGraphPattern() {
         return Sequence(OPEN_CURLY_BRACE(), FirstOf(SubSelect(), GroupGraphPatternSub()), CLOSE_CURLY_BRACE());
@@ -148,7 +217,7 @@ public class SPARQL11Parser extends SPARQL11Lexer {
 
 
     public Rule SubSelect() {
-        return Sequence(startSubQuery(-1), SelectClause(), WhereClause(), SolutionModifiers(), endSubQuery());
+        return Sequence(startSubQuery(-1), SelectClause(), WhereClause(), SolutionModifiers(), ValuesClause(), endSubQuery());
     }
 
     public boolean startSubQuery(int i) {
@@ -191,8 +260,7 @@ public class SPARQL11Parser extends SPARQL11Lexer {
 
 
     public Rule GraphPatternNotTriples() {
-        debug("GraphPatternNotTriples");
-        return FirstOf(GroupOrUnionGraphPattern(), OptionalGraphPattern(), GraphGraphPattern(), Filter());
+        return FirstOf(GroupOrUnionGraphPattern(), OptionalGraphPattern(), GraphGraphPattern(), Filter(), InlineData());
     }
 
     public Rule Filter() {
@@ -201,6 +269,10 @@ public class SPARQL11Parser extends SPARQL11Lexer {
 
     public Rule OptionalGraphPattern() {
         return Sequence(OPTIONAL(), GroupGraphPattern(), addOptionalElement());
+    }
+
+    public Rule InlineData() {
+        return Sequence(VALUES(), DataBlock(), push(((ValuesClauseBuilder) pop()).getElm()));
     }
 
     public Rule GraphGraphPattern() {
@@ -271,8 +343,9 @@ public class SPARQL11Parser extends SPARQL11Lexer {
 
 
     public Rule ConstructTemplate() {
-        return Sequence(OPEN_CURLY_BRACE(), push(new TripleCollectorBGP()), ConstructTriples(), CLOSE_CURLY_BRACE());
+        return Sequence(OPEN_CURLY_BRACE(), bNodeOn(), push(new TripleCollectorBGP()), ConstructTriples(), bNodeOff(), CLOSE_CURLY_BRACE());
     }
+
 
     public Rule ConstructTriples() {
         return Sequence(TriplesSameSubject(), Optional(Sequence(DOT(), Optional(ConstructTriples()))));
@@ -317,7 +390,7 @@ public class SPARQL11Parser extends SPARQL11Lexer {
     }
 
     public Rule Collection() {
-        return Sequence(OPEN_BRACE(), OneOrMore(GraphNode()), CLOSE_BRACE());
+        return Sequence(OPEN_SQUARE_BRACE(), OneOrMore(GraphNode()), CLOSE_SQUARE_BRACE());
     }
 
     public Rule GraphNode() {
@@ -540,10 +613,12 @@ public class SPARQL11Parser extends SPARQL11Lexer {
 
 
     public Rule RegexExpression() {
-        return Sequence(REGEX(), OPEN_BRACE(), Expression(), COMMA(),
-                Expression(), FirstOf(Optional(Sequence(COMMA(), Expression(), swap3(), push(new E_Regex((Expr) pop(), (Expr) pop(), (Expr) pop())))),
+        return Sequence(REGEX(), OPEN_BRACE(), Expression(), COMMA(), Expression(),
+                FirstOf(
                         Sequence(swap(), push(new E_Regex((Expr) pop(), (Expr) pop(), null))),
-                        CLOSE_BRACE()));
+                        Optional(Sequence(COMMA(), Expression(), swap3(), push(new E_Regex((Expr) pop(), (Expr) pop(), (Expr) pop()))))
+                ),
+                CLOSE_BRACE());
     }
 
     public Rule IriRefOrFunction() {
@@ -629,8 +704,10 @@ public class SPARQL11Parser extends SPARQL11Lexer {
 
 
     public Rule BlankNode() {
-        return FirstOf(BLANK_NODE_LABEL(), Sequence(OPEN_SQUARE_BRACE(),
-                CLOSE_SQUARE_BRACE()));
+        return FirstOf(
+                Sequence(BLANK_NODE_LABEL(), push(match()), TestNot(previousLabels.contains(peek().toString())), push(activeLabelMap.asNode(pop().toString()))),
+                Sequence(OPEN_SQUARE_BRACE(),
+                        CLOSE_SQUARE_BRACE(), push(activeLabelMap.allocNode())));
     }
 
 
