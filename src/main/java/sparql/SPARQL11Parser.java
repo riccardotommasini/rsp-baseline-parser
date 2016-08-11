@@ -260,7 +260,11 @@ public class SPARQL11Parser extends SPARQL11Lexer {
 
 
     public Rule GraphPatternNotTriples() {
-        return FirstOf(GroupOrUnionGraphPattern(), OptionalGraphPattern(), GraphGraphPattern(), Filter(), InlineData());
+        return FirstOf(GroupOrUnionGraphPattern(), OptionalGraphPattern(), MinusGraphPattern(), GraphGraphPattern(), Filter(), InlineData());
+    }
+
+    public Rule MinusGraphPattern() {
+        return Sequence(MINUSC(), GroupGraphPattern(), push(new ElementMinus(popElement())));
     }
 
     public Rule Filter() {
