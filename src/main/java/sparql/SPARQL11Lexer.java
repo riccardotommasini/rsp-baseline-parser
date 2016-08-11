@@ -529,6 +529,14 @@ public class SPARQL11Lexer extends QueryParser {
         return ChWS('-');
     }
 
+    public Rule MINUSC() {
+        return StringIgnoreCaseWS("MINUS");
+    }
+
+    public Rule BIND() {
+        return StringIgnoreCaseWS("BIND");
+    }
+
     public Rule ASTERISK() {
         return ChWS('*');
     }
