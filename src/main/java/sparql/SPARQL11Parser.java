@@ -142,7 +142,6 @@ public class SPARQL11Parser extends SPARQL11Lexer {
 
 
     public Rule GroupGraphPattern() {
-        debug("GroupGraphPattern");
         return Sequence(OPEN_CURLY_BRACE(), FirstOf(SubSelect(), GroupGraphPatternSub()), CLOSE_CURLY_BRACE());
     }
 
@@ -160,7 +159,6 @@ public class SPARQL11Parser extends SPARQL11Lexer {
     }
 
     public Rule GroupGraphPatternSub() {
-        debug("GroupGraphPatternSub");
         return Sequence(push(new ElementGroup()), Optional(TriplesBlock(), addSubElement()),
                 ZeroOrMore(GraphPatternNotTriples(), addSubElement(), Optional(DOT()),
                         Optional(TriplesBlock(), addSubElement())));
@@ -168,11 +166,15 @@ public class SPARQL11Parser extends SPARQL11Lexer {
 
 
     public Rule GroupCondition() {
-        return FirstOf(Sequence(Var(), pushQuery(((Query) pop(1)).addGroupBy((Var) pop()))),
+        return FirstOf(
+                Sequence(Var(), pushQuery(((Query) pop(1)).addGroupBy((Var) pop()))),
                 Sequence(BuiltInCall(), pushQuery(((Query) pop(1)).addGroupBy((Expr) pop()))),
                 Sequence(FunctionCall(), pushQuery(((Query) pop(1)).addGroupBy((Expr) pop()))),
-                Sequence(OPEN_BRACE(), Expression(), AS(), Var(), CLOSE_BRACE(), pushQuery(((Query) pop(2)).addGroupBy((Var) pop(), (Expr) pop())))
-        );
+                Sequence(OPEN_BRACE(), Expression(),
+                        FirstOf(
+                                Sequence(AS(), Var(), CLOSE_BRACE(), pushQuery(((Query) pop(2)).addGroupBy((Var) pop(), (Expr) pop()))),
+                                Sequence(CLOSE_BRACE(), pushQuery(((Query) pop(1)).addGroupBy((Expr) pop()))))));
+
     }
 
     public Rule OrderCondition() {
@@ -448,7 +450,7 @@ public class SPARQL11Parser extends SPARQL11Lexer {
                 Sequence(LCASE(), OPEN_BRACE(), Expression(), push(new E_StrLowerCase((Expr) pop())), CLOSE_BRACE()),
                 Sequence(ENCODE_FOR_URI(), OPEN_BRACE(), Expression(), push(new E_StrEncodeForURI((Expr) pop())), CLOSE_BRACE()),
                 Sequence(CONTAINS(), OPEN_BRACE(), Expression(), COMMA(), Expression(), swap(), push(new E_StrContains((Expr) pop(), (Expr) pop())), CLOSE_BRACE()),
-                Sequence(SAME_TERM(), OPEN_BRACE(), Expression(), COMMA(), Expression(), swap(), push(new E_SameTerm((Expr) pop(), (Expr) pop())), CLOSE_BRACE()),
+                Sequence(FirstOf(SAME_TERM(), SAMETERM()), OPEN_BRACE(), Expression(), COMMA(), Expression(), swap(), push(new E_SameTerm((Expr) pop(), (Expr) pop())), CLOSE_BRACE()),
                 Sequence(STRDT(), OPEN_BRACE(), Expression(), COMMA(), Expression(), swap(), push(new E_StrDatatype((Expr) pop(), (Expr) pop())), CLOSE_BRACE()),
                 Sequence(STRLANG(), OPEN_BRACE(), Expression(), COMMA(), Expression(), swap(), push(new E_StrLang((Expr) pop(), (Expr) pop())), CLOSE_BRACE()),
 
@@ -463,10 +465,6 @@ public class SPARQL11Parser extends SPARQL11Lexer {
                 Sequence(ISBLANK(), OPEN_BRACE(), Expression(), push(new E_IsBlank((Expr) pop())), CLOSE_BRACE()),
                 Sequence(ISLITERAL(), OPEN_BRACE(), Expression(), push(new E_IsLiteral((Expr) pop())), CLOSE_BRACE()),
                 Sequence(IS_NUMERIC(), OPEN_BRACE(), Expression(), push(new E_IsNumeric((Expr) pop())), CLOSE_BRACE()),
-
-                Sequence(SAMETERM(), OPEN_BRACE(), Expression(), COMMA(),
-                        Expression(), push(new E_SameTerm((Expr) pop(), (Expr) pop())), CLOSE_BRACE()),
-
                 RegexExpression());
     }
 
@@ -564,7 +562,7 @@ public class SPARQL11Parser extends SPARQL11Lexer {
     public Rule ArgList() {
         return Sequence(push(new Args()),
                 FirstOf(Sequence(OPEN_BRACE(), CLOSE_BRACE()),
-                        Sequence(OPEN_BRACE(), Expression(), addArg(), ZeroOrMore(Sequence(COMMA(),
+                        Sequence(OPEN_BRACE(), Optional(DISTINCT(), ((Args) pop()).distinct = true), Expression(), addArg(), ZeroOrMore(Sequence(COMMA(),
                                 Expression(), addArg())), CLOSE_BRACE())));
     }
 

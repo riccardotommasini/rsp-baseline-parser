@@ -10,6 +10,7 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameters;
 import org.parboiled.Parboiled;
+import org.parboiled.errors.ParseError;
 import org.parboiled.parserunners.ReportingParseRunner;
 import org.parboiled.support.ParsingResult;
 
@@ -72,6 +73,17 @@ public class Sparql11QueryTest {
         parser.setResolver(IRIResolver.create());
         ReportingParseRunner reportingParseRunner = new ReportingParseRunner(parser.Query());
         ParsingResult<Query> result = reportingParseRunner.run(input);
+        if (result.hasErrors()) {
+            for (ParseError e : result.parseErrors) {
+                System.out.println(e.getStartIndex());
+                System.out.println(e.getEndIndex());
+
+                System.out.println(input.substring(0, e.getStartIndex()));
+                System.err.print(input.substring(e.getStartIndex(), e.getEndIndex()));
+                System.out.println(input.substring(e.getEndIndex(), input.length() - 1));
+
+            }
+        }
         org.apache.jena.query.Query q = result.parseTreeRoot.getChildren().get(0).getValue().getQ();
         QueryCompare.PrintMessages = true;
         assertEquals(res, org.apache.jena.sparql.core.QueryCompare.equals(query1, q));

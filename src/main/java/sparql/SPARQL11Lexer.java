@@ -311,9 +311,10 @@ public class SPARQL11Lexer extends QueryParser {
 
 
     public Rule IRI_REF() {
-        return Sequence(LESS_NO_COMMENT(),
+        return Sequence(LESS(),
                 ZeroOrMore(Sequence(TestNot(FirstOf(LESS_NO_COMMENT(), GREATER(), '"', OPEN_CURLY_BRACE(),
-                        CLOSE_CURLY_BRACE(), '|', '^', '\\', '`', CharRange('\u0000', '\u0020'))), ANY)), Sequence(GREATER(), WS()));
+                        CLOSE_CURLY_BRACE(), '|', '^', '\\', '`', CharRange('\u0000', '\u0020'))), ANY)),
+                GREATER(), WS());
     }
 
     public Rule BLANK_NODE_LABEL() {
@@ -558,7 +559,7 @@ public class SPARQL11Lexer extends QueryParser {
 
 
     public Rule GREATER() {
-        return Sequence(ChWS('>'), WS());
+        return ChWS('>');
     }
 
     // </Lexer>
