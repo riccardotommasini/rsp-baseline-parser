@@ -311,7 +311,7 @@ public class SPARQL11Lexer extends QueryParser {
 
 
     public Rule IRI_REF() {
-        return Sequence(LESS(),
+        return Sequence(LESS_NO_COMMENT(),
                 ZeroOrMore(Sequence(TestNot(FirstOf(LESS_NO_COMMENT(), GREATER(), '"', OPEN_CURLY_BRACE(),
                         CLOSE_CURLY_BRACE(), '|', '^', '\\', '`', CharRange('\u0000', '\u0020'))), ANY)),
                 GREATER(), WS());

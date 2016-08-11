@@ -1,5 +1,6 @@
 package sparql;
 
+import org.apache.jena.atlas.lib.EscapeStr;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.NodeFactory;
@@ -382,7 +383,7 @@ public class SPARQL11Parser extends SPARQL11Lexer {
     public Rule AdditiveExpression() {
         return Sequence(MultiplicativeExpression(), //
                 ZeroOrMore(FirstOf(
-                        Sequence(PLUS(), MultiplicativeExpression(),
+                        Sequence(PLUS(), MultiplicativeExpression(), swap(),
                                 push(new E_Add((Expr) pop(), (Expr) pop()))), //
                         Sequence(MINUS(), MultiplicativeExpression()//TODO DOUBLE_NEGATIVE
                                 , swap(),
@@ -409,9 +410,9 @@ public class SPARQL11Parser extends SPARQL11Lexer {
                 BrackettedExpression(),
                 BuiltInCall(),
                 IriRefOrFunction(),
-                Sequence(RdfLiteral(), asExpr()),
-                Sequence(NumericLiteral(), asExpr()),
                 Sequence(BooleanLiteral(), asExpr()),
+                Sequence(NumericLiteral(), asExpr()),
+                Sequence(RdfLiteral(), asExpr()),
                 Sequence(Var(), asExpr()));
     }
 
@@ -567,15 +568,15 @@ public class SPARQL11Parser extends SPARQL11Lexer {
     }
 
     public Rule RdfLiteral() {
-        return Sequence(String(), push(trimMatch().replace("\"", "").replace("\'", "")),
+        return Sequence(String(), push(stringMatch()),
                 FirstOf(
                         Sequence(LANGTAG(), push(NodeFactory.createLiteral(pop().toString(), trimMatch().substring(1)))),
                         Sequence(REFERENCE(), IriRef(), swap(),
-                                push(NodeFactory.createLiteral(pop().toString(),
+                                push(NodeFactory.createLiteral(
+                                        EscapeStr.unescape(pop().toString(), '\\', false),
                                         getSafeTypeByName(((Node_URI) pop()).getURI()))))
-                        , push(NodeFactory.createLiteral(pop().toString()))));
+                        , push(NodeFactory.createLiteral(EscapeStr.unescape(pop().toString(), '\\', false)))));
     }
-
 
     public Rule NumericLiteral() {
         return FirstOf(NumericLiteralUnsigned(), NumericLiteralPositive(),
@@ -605,7 +606,7 @@ public class SPARQL11Parser extends SPARQL11Lexer {
     }
 
     public Rule BooleanLiteral() {
-        return Sequence(FirstOf(TRUE(), FALSE()), push(NodeFactory.createLiteralByValue(trimMatch(), XSDDatatype.XSDboolean))
+        return Sequence(FirstOf(Sequence(TRUE(), push(XSD_TRUE)), Sequence(FALSE(), push(XSD_FALSE)))
                 , Optional(REFERENCE(), IriRef(), drop()));
     }
 

@@ -143,7 +143,13 @@ public class QueryParser extends BaseParser<Object> {
     }
 
     public String trimMatch() {
-        return match().trim();
+        String trim = match().trim();
+        return trim;
+    }
+
+    public String stringMatch() {
+        String trim = match().trim();
+        return trim.substring(1, trim.length() - 1);
     }
 
     public String URIMatch() {
