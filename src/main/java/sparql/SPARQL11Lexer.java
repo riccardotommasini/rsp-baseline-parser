@@ -140,6 +140,10 @@ public class SPARQL11Lexer extends QueryParser {
         return Sequence(LESS(), IgnoreCase("NIL"), GREATER());
     }
 
+    public Rule NIL2() {
+        return Sequence(OPEN_BRACE(), WS(), CLOSE_BRACE());
+    }
+
     public Rule WS() {
         return ZeroOrMore(FirstOf(COMMENT(), WS_NO_COMMENT()));
     }
@@ -186,6 +190,11 @@ public class SPARQL11Lexer extends QueryParser {
 
     public Rule ASK() {
         return StringIgnoreCaseWS("ASK");
+
+    }
+
+    public Rule IN() {
+        return StringIgnoreCaseWS("IN");
 
     }
 
@@ -545,6 +554,18 @@ public class SPARQL11Lexer extends QueryParser {
         return StringIgnoreCaseWS("SILENT");
     }
 
+    public Rule EXISTS() {
+        return StringIgnoreCaseWS("EXISTS");
+    }
+
+    public Rule UNDEF() {
+        return StringIgnoreCaseWS("UNDEF");
+    }
+
+    public Rule VALUES() {
+        return StringIgnoreCaseWS("VALUES");
+    }
+
     public Rule ASTERISK() {
         return ChWS('*');
     }
@@ -553,8 +574,12 @@ public class SPARQL11Lexer extends QueryParser {
         return ChWS(',');
     }
 
-    public Rule NOT() {
+    public Rule BANG() {
         return ChWS('!');
+    }
+
+    public Rule NOT() {
+        return StringIgnoreCaseWS("NOT");
     }
 
     public Rule DIVIDE() {

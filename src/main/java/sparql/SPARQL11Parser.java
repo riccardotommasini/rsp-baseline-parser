@@ -55,8 +55,7 @@ public class SPARQL11Parser extends SPARQL11Lexer {
                                 ConstructClause(),
                                 ZeroOrMore(DatasetClause()),
                                 WhereClause())
-                        , Sequence(
-                                ConstructWhereClause(), ZeroOrMore(DatasetClause())))
+                        , ConstructWhereClause())
                 , SolutionModifiers());
     }
 
@@ -87,7 +86,11 @@ public class SPARQL11Parser extends SPARQL11Lexer {
 
 
     public Rule ConstructWhereClause() {
-        return Sequence(CONSTRUCT(), pushQuery(popQuery(0).setConstructQuery()), WHERE(), OPEN_CURLY_BRACE(), pushQuery(popQuery(0).setConstructQuery()), push(new ElementGroup()), TriplesTemplate(), addTemplateAndPatternToQuery(), addElementToQuery(), CLOSE_CURLY_BRACE());
+        return Sequence(CONSTRUCT(), pushQuery(popQuery(0).setConstructQuery()),
+
+                ZeroOrMore(DatasetClause()),
+
+                WHERE(), OPEN_CURLY_BRACE(), pushQuery(popQuery(0).setConstructQuery()), push(new ElementGroup()), TriplesTemplate(), addTemplateAndPatternToQuery(), addElementToQuery(), CLOSE_CURLY_BRACE());
     }
 
     public Rule ConstructClause() {
@@ -145,10 +148,9 @@ public class SPARQL11Parser extends SPARQL11Lexer {
         return ZeroOrMore(Sequence(VALUES(), DataBlock(), addValuesToQuery()));
     }
 
-
     public boolean addValuesToQuery() {
         ValuesClauseBuilder vcb = (ValuesClauseBuilder) pop();
-        getQuery(1).getQ().setValuesDataBlock(vcb.getElm().getVars(), vcb.getElm().getRows());
+        getQuery(0).getQ().setValuesDataBlock(vcb.getElm().getVars(), vcb.getElm().getRows());
         return true;
     }
 
@@ -169,10 +171,14 @@ public class SPARQL11Parser extends SPARQL11Lexer {
     }
 
     public Rule InlineDataOneVar() {
-        return Sequence(Var(), emitDataBlockVariable((Var) pop()), OPEN_CURLY_BRACE(), ZeroOrMore(DataBlockValue(), Sequence(Test(peek() instanceof Node)
-                , startDataBlockValueRow(1), emitDataBlockValue((Node) pop()))
-
-        ), CLOSE_CURLY_BRACE());
+        return FirstOf(Sequence(OPEN_CURLY_BRACE(), WS(), CLOSE_CURLY_BRACE()),
+                Sequence(Var(), emitDataBlockVariable((Var) pop()), OPEN_CURLY_BRACE(), ZeroOrMore(DataBlockValue(),
+                        FirstOf(
+                                Sequence(Test(peek() instanceof Node), startDataBlockValueRow(1)
+                                        , emitDataBlockValue((Node) pop())),
+                                Sequence(TestNot(peek() instanceof Node), startDataBlockValueRow(0)
+                                        , emitDataBlockValue((null)))
+                        )), CLOSE_CURLY_BRACE()));
     }
 
     public boolean startDataBlockValueRow(int i) {
@@ -184,7 +190,7 @@ public class SPARQL11Parser extends SPARQL11Lexer {
 
     public boolean emitDataBlockValue(Node n) {
 
-        ValuesClauseBuilder pop = (ValuesClauseBuilder) peek(0);
+        ValuesClauseBuilder pop = (ValuesClauseBuilder) peek();
         pop.currentColumn++;
 
         if (pop.isValid() && n != null) {
@@ -201,14 +207,6 @@ public class SPARQL11Parser extends SPARQL11Lexer {
 
     public Rule DataBlockValue() {
         return FirstOf(UNDEF(), IriRef(), RdfLiteral(), NumericLiteral(), BooleanLiteral());
-    }
-
-    public Rule UNDEF() {
-        return StringIgnoreCaseWS("UNDEF");
-    }
-
-    public Rule VALUES() {
-        return StringIgnoreCaseWS("VALUES");
     }
 
     public Rule GroupGraphPattern() {
@@ -319,14 +317,12 @@ public class SPARQL11Parser extends SPARQL11Lexer {
                 FirstOf(
                         Sequence(DISTINCT(), push(new Boolean(true))),
                         push(new Boolean(false))),
-                Sequence(
-                        Expression(),
-                        SEMICOLON(),
+                Expression(),
+                ZeroOrMore(SEMICOLON(),
                         SEPARATOR(),
                         EQUAL(),
                         String(),
-                        swap(),
-                        push(AggregatorFactory.createGroupConcat((Boolean) pop(),
+                        push(AggregatorFactory.createGroupConcat((Boolean) pop(1),
                                 (Expr) pop(), trimMatch(), new ExprList()))
                 ), CLOSE_BRACE());
     }
@@ -346,8 +342,8 @@ public class SPARQL11Parser extends SPARQL11Lexer {
     }
 
     public Rule TriplesBlockSub() {
-        return Sequence(TriplesSameSubject(),
-                Optional(DOT(), Optional(TriplesBlockSub())));
+        return Sequence(TriplesSameSubject(), ZeroOrMore(
+                DOT(), Optional(TriplesBlockSub())));
     }
 
 
@@ -432,7 +428,7 @@ public class SPARQL11Parser extends SPARQL11Lexer {
     }
 
     public Rule ExpressionList() {
-        return Sequence(OPEN_BRACE(), Expression(), push(new ExprList((Expr) pop())), ZeroOrMore(Sequence(COMMA(), Expression(), addExprToExprList())), CLOSE_BRACE());
+        return FirstOf(Sequence(NIL2(), push(new ExprList())), Sequence(OPEN_BRACE(), Expression(), push(new ExprList((Expr) pop())), ZeroOrMore(COMMA(), Expression(), addExprToExprList()), CLOSE_BRACE()));
     }
 
 
@@ -455,14 +451,17 @@ public class SPARQL11Parser extends SPARQL11Lexer {
     }
 
     public Rule RelationalExpression() {
-        return Sequence(NumericExpression(), Optional(FirstOf(
-                Sequence(EQUAL(), NumericExpression(), swap(), push(new E_Equals((Expr) pop(), (Expr) pop()))),
-                Sequence(NOT_EQUAL(), NumericExpression(), swap(), push(new E_NotEquals((Expr) pop(), (Expr) pop()))),
-                Sequence(LESS(), NumericExpression(), swap(), push(new E_LessThan((Expr) pop(), (Expr) pop()))),
-                Sequence(GREATER(), NumericExpression(), swap(), push(new E_GreaterThan((Expr) pop(), (Expr) pop()))),
-                Sequence(LESS_EQUAL(), NumericExpression(), swap(), push(new E_LessThanOrEqual((Expr) pop(), (Expr) pop()))),
-                Sequence(GREATER_EQUAL(), NumericExpression(), swap(), push(new E_GreaterThanOrEqual((Expr) pop(), (Expr) pop())))
-        )));
+        return Sequence(NumericExpression(),
+                Optional(FirstOf(
+                        Sequence(EQUAL(), NumericExpression(), swap(), push(new E_Equals((Expr) pop(), (Expr) pop()))),
+                        Sequence(NOT_EQUAL(), NumericExpression(), swap(), push(new E_NotEquals((Expr) pop(), (Expr) pop()))),
+                        Sequence(LESS(), NumericExpression(), swap(), push(new E_LessThan((Expr) pop(), (Expr) pop()))),
+                        Sequence(GREATER(), NumericExpression(), swap(), push(new E_GreaterThan((Expr) pop(), (Expr) pop()))),
+                        Sequence(LESS_EQUAL(), NumericExpression(), swap(), push(new E_LessThanOrEqual((Expr) pop(), (Expr) pop()))),
+                        Sequence(GREATER_EQUAL(), NumericExpression(), swap(), push(new E_GreaterThanOrEqual((Expr) pop(), (Expr) pop()))),
+                        Sequence(IN(), ExpressionList(), swap(), push(new E_OneOf((Expr) pop(), (ExprList) pop()))),
+                        Sequence(NOT(), IN(), ExpressionList(), swap(), push(new E_NotOneOf((Expr) pop(), (ExprList) pop())))
+                )));
     }
 
     public Rule NumericExpression() {
@@ -488,7 +487,7 @@ public class SPARQL11Parser extends SPARQL11Lexer {
 
     public Rule UnaryExpression() {
         return FirstOf(
-                Sequence(NOT(), PrimaryExpression(), push(new E_LogicalNot((Expr) pop()))),
+                Sequence(BANG(), PrimaryExpression(), push(new E_LogicalNot((Expr) pop()))),
                 Sequence(PLUS(), PrimaryExpression()),
                 Sequence(MINUS(), PrimaryExpression()),
                 PrimaryExpression());
@@ -555,6 +554,9 @@ public class SPARQL11Parser extends SPARQL11Lexer {
                 Sequence(ISBLANK(), OPEN_BRACE(), Expression(), push(new E_IsBlank((Expr) pop())), CLOSE_BRACE()),
                 Sequence(ISLITERAL(), OPEN_BRACE(), Expression(), push(new E_IsLiteral((Expr) pop())), CLOSE_BRACE()),
                 Sequence(IS_NUMERIC(), OPEN_BRACE(), Expression(), push(new E_IsNumeric((Expr) pop())), CLOSE_BRACE()),
+                Sequence(EXISTS(), GroupGraphPattern(), push(new E_Exists((Element) pop()))),
+                Sequence(NOT(), EXISTS(), GroupGraphPattern(), push(new E_NotExists((Element) pop()))),
+
                 RegexExpression());
     }
 
@@ -717,7 +719,6 @@ public class SPARQL11Parser extends SPARQL11Lexer {
     public Rule PrefixedName() {
         return FirstOf(PNAME_LN(), PNAME_NS());
     }
-
 
     public Rule BlankNode() {
         return FirstOf(
