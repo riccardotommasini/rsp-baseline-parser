@@ -541,8 +541,9 @@ public class SPARQL11Parser extends SPARQL11Lexer {
 
     public Rule RegexExpression() {
         return Sequence(REGEX(), OPEN_BRACE(), Expression(), COMMA(),
-                Expression(), Optional(Sequence(COMMA(), Expression())),
-                CLOSE_BRACE());
+                Expression(), FirstOf(Optional(Sequence(COMMA(), Expression(), swap3(), push(new E_Regex((Expr) pop(), (Expr) pop(), (Expr) pop())))),
+                        Sequence(swap(), push(new E_Regex((Expr) pop(), (Expr) pop(), null))),
+                        CLOSE_BRACE()));
     }
 
     public Rule IriRefOrFunction() {
