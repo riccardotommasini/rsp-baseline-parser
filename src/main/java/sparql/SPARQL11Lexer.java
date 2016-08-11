@@ -537,6 +537,14 @@ public class SPARQL11Lexer extends QueryParser {
         return StringIgnoreCaseWS("BIND");
     }
 
+    public Rule SERVICE() {
+        return StringIgnoreCaseWS("SERVICE");
+    }
+
+    public Rule SILENT() {
+        return StringIgnoreCaseWS("SILENT");
+    }
+
     public Rule ASTERISK() {
         return ChWS('*');
     }
