@@ -1,4 +1,4 @@
-package sparql;
+package it.polimi.parser.sparql;
 
 import org.apache.jena.atlas.lib.EscapeStr;
 import org.apache.jena.datatypes.xsd.XSDDatatype;

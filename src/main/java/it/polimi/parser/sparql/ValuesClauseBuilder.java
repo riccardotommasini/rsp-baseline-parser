@@ -1,4 +1,4 @@
-package sparql;
+package it.polimi.parser.sparql;
 
 import lombok.Data;
 import org.apache.jena.sparql.core.Var;

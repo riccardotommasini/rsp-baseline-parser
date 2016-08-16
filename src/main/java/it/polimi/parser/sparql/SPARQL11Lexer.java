@@ -1,4 +1,4 @@
-package sparql;/*
+package it.polimi.parser.sparql;/*
  * Copyright (c) 2009 Ken Wenzel
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy

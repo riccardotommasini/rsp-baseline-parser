@@ -1,7 +1,6 @@
-package sparql;
+package it.polimi.parser.sparql;
 
 import lombok.ToString;
-import org.apache.jena.base.Sys;
 
 /**
  * Created by Riccardo on 06/08/16.

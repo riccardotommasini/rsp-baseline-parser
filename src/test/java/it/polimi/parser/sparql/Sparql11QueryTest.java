@@ -1,4 +1,4 @@
-package sparql;
+package it.polimi.parser.sparql;
 
 import org.apache.commons.io.Charsets;
 import org.apache.commons.io.IOUtils;
@@ -34,7 +34,7 @@ public class Sparql11QueryTest {
 
     private static boolean res;
     private static String f;
-    private static final String folder = "sparql/";
+    private static final String folder = "tests/";
 
     @Parameters
     public static Collection<Object[]> data() throws IOException {
