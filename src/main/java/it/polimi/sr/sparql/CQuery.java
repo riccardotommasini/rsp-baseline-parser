@@ -33,7 +33,7 @@ public class CQuery extends org.apache.jena.query.Query {
     private Set<Window> windows;
     private List<ElementNamedGraph> windowGraphElements;
     private Register header;
-    private List<EventDecl> eventDeclarations;
+    private Map<String, EventDecl> eventDeclarations;
 
     public CQuery(IRIResolver resolver) {
         setBaseURI(resolver);
@@ -241,9 +241,9 @@ public class CQuery extends org.apache.jena.query.Query {
     }
 
     public CQuery addEventDecl(EventDecl ed) {
-        if(eventDeclarations==null)
-            eventDeclarations= new ArrayList<EventDecl>();
-        eventDeclarations.add(ed);
+        if (eventDeclarations == null)
+            eventDeclarations = new HashMap<String, EventDecl>();
+        eventDeclarations.put(ed.getHead(), ed);
         return this;
     }
 }

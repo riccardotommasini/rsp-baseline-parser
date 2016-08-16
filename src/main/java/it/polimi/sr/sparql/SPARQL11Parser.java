@@ -24,10 +24,11 @@ import org.parboiled.Rule;
 public class SPARQL11Parser extends CSPARQLLexer {
 
     public Rule Query() {
-        return Sequence(push(new CQuery(getResolver())), WS(), Optional(Registration()), Prologue(), Optional(CreateEventClause())
-                , FirstOf(SelectQuery(), ConstructQuery(), AskQuery(), DescribeQuery()), ValuesClause()
+        return Sequence(push(new CQuery(getResolver())), WS(), Optional(Registration()), Prologue(), ZeroOrMore(CreateEventClause())
+                , FirstOf(MatchQuery(), SelectQuery(), ConstructQuery(), AskQuery(), DescribeQuery()), ValuesClause()
                 , EOI);
     }
+
 
     public Rule CreateEventClause() {
         return Sequence(CREATE(), EVENT(), Var(), OPEN_CURLY_BRACE(), EventDef()
@@ -38,12 +39,60 @@ public class SPARQL11Parser extends CSPARQLLexer {
         return ZeroOrMore(Sequence(TestNot('}'), ANY), WS());
     }
 
+
     public Rule EVENT() {
         return StringIgnoreCaseWS("EVENT");
     }
 
     public Rule CREATE() {
         return StringIgnoreCaseWS("CREATE");
+    }
+
+
+    public Rule MatchQuery() {
+        return Sequence(MATCH(), PatternExpression());
+    }
+
+    public Rule PatternExpression() {
+        return FollowedByExpression();
+    }
+
+    public Rule FollowedByExpression() {
+        return Sequence(OrExpression(), ZeroOrMore(FirstOf(FOLLOWED_BY(), Sequence(NOT(), FOLLOWED_BY())), OrExpression()));
+    }
+
+    public Rule OrExpression() {
+        return Sequence(AndExpression(), ZeroOrMore(OR_(), AndExpression()));
+    }
+
+    public Rule AndExpression() {
+        return Sequence(QualifyExpression(), ZeroOrMore(AND_(), QualifyExpression()));
+    }
+
+    public Rule QualifyExpression() {
+        return Sequence(Optional(FirstOf(EVERY(), NOT())), GuardPostFix());
+    }
+
+    public Rule GuardPostFix() {
+        return FirstOf(FirstOf(Sequence(VarOrIRIref(), drop()),
+                Sequence(OPEN_CURLY_BRACE(), TriplesBlock(), drop(), CLOSE_CURLY_BRACE())
+        ), Sequence(OPEN_BRACE(), PatternExpression(), CLOSE_BRACE()));
+    }
+
+    public Rule AND_() {
+        return StringIgnoreCaseWS("AND");
+    }
+
+    public Rule OR_() {
+        return StringIgnoreCaseWS("OR");
+    }
+
+    public Rule FOLLOWED_BY() {
+        return FirstOf(StringWS("->"), StringIgnoreCaseWS("FOLLOWED_BY"), Sequence(StringIgnoreCaseWS("FOLLOWED"), BY()));
+    }
+
+    public Rule MATCH() {
+        return StringIgnoreCaseWS("MATCH");
     }
 
 

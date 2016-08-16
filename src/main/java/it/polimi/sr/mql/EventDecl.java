@@ -12,6 +12,7 @@ import org.apache.jena.sparql.core.Var;
 @EqualsAndHashCode
 @ToString
 public class EventDecl {
+
     private final String head;
     private final String body;
 

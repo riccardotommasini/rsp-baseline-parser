@@ -1,5 +1,4 @@
 import it.polimi.sr.csparql.Window;
-import it.polimi.sr.mql.EventDecl;
 import it.polimi.sr.sparql.CQuery;
 import it.polimi.sr.sparql.SPARQL11Parser;
 import org.apache.commons.io.FileUtils;
@@ -123,15 +122,14 @@ public class CSPARQLMain {
         }
 
         if (q.getEventDeclarations() != null) {
-            for (EventDecl e : q.getEventDeclarations()) {
-                System.out.println(e.toString());
+            for (String k : q.getEventDeclarations().keySet()) {
+                System.out.println(q.getEventDeclarations().get(k));
             }
         }
 
         System.out.println(q.getHeader());
 
         System.out.println(q.toString());
-
 
     }
 
