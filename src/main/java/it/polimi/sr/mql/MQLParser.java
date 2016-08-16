@@ -1,9 +1,11 @@
-package it.polimi.sr.sparql;
+package it.polimi.sr.mql;
 
 import it.polimi.sr.csparql.CSPARQLLexer;
 import it.polimi.sr.csparql.Register;
 import it.polimi.sr.csparql.Window;
-import it.polimi.sr.mql.EventDecl;
+import it.polimi.sr.sparql.Function;
+import it.polimi.sr.sparql.Prefix;
+import it.polimi.sr.sparql.ValuesClauseBuilder;
 import org.apache.jena.atlas.lib.EscapeStr;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.graph.Node;
@@ -21,10 +23,10 @@ import org.parboiled.Rule;
 /**
  * Created by Riccardo on 09/08/16.
  */
-public class SPARQL11Parser extends CSPARQLLexer {
+public class MQLParser extends CSPARQLLexer {
 
     public Rule Query() {
-        return Sequence(push(new CQuery(getResolver())), WS(), Optional(Registration()), Prologue(), ZeroOrMore(CreateEventClause())
+        return Sequence(push(new MQLQuery(getResolver())), WS(), Optional(Registration()), Prologue(), ZeroOrMore(CreateEventClause())
                 , FirstOf(MatchQuery(), SelectQuery(), ConstructQuery(), AskQuery(), DescribeQuery()), ValuesClause()
                 , EOI);
     }
@@ -111,11 +113,11 @@ public class SPARQL11Parser extends CSPARQLLexer {
 
 
     public Rule BaseDecl() {
-        return Sequence(BASE(), IRI_REF(), pushQuery(((CQuery) pop(0)).setCSPARLQBaseURI(trimMatch().replace(">", "").replace("<", ""))), WS());
+        return Sequence(BASE(), IRI_REF(), pushQuery(((MQLQuery) pop(0)).setCSPARLQBaseURI(trimMatch().replace(">", "").replace("<", ""))), WS());
     }
 
     public Rule PrefixDecl() {
-        return Sequence(PrefixBuild(), pushQuery(((CQuery) pop(1)).setPrefix((Prefix) pop())), WS());
+        return Sequence(PrefixBuild(), pushQuery(((MQLQuery) pop(1)).setPrefix((Prefix) pop())), WS());
     }
 
     public Rule PrefixBuild() {
@@ -160,9 +162,9 @@ public class SPARQL11Parser extends CSPARQLLexer {
                 FirstOf(Sequence(ASTERISK(), pushQuery(popQuery(0).setQueryStar())),
                         OneOrMore(
                                 FirstOf(
-                                        Sequence(Var(), pushQuery(((CQuery) pop(1)).addCSPARQLCResultVar((Node) pop()))),
+                                        Sequence(Var(), pushQuery(((MQLQuery) pop(1)).addCSPARQLCResultVar((Node) pop()))),
                                         Sequence(OPEN_BRACE(), Expression(), AS(), Var(), CLOSE_BRACE(),
-                                                pushQuery(((CQuery) pop(2)).addCSPARQLCResultVar((Node) pop(), (Expr) pop())))))));
+                                                pushQuery(((MQLQuery) pop(2)).addCSPARQLCResultVar((Node) pop(), (Expr) pop())))))));
     }
 
     public Rule ConstructWhereClause() {
@@ -222,11 +224,11 @@ public class SPARQL11Parser extends CSPARQLLexer {
     }
 
     public Rule DefaultGraphClause() {
-        return Sequence(SourceSelector(), pushQuery(((CQuery) pop(1)).addGraphURI((Node_URI) pop())));
+        return Sequence(SourceSelector(), pushQuery(((MQLQuery) pop(1)).addGraphURI((Node_URI) pop())));
     }
 
     public Rule NamedGraphClause() {
-        return Sequence(NAMED(), SourceSelector(), pushQuery(((CQuery) pop(1)).addNamedGraphURI((Node_URI) pop())));
+        return Sequence(NAMED(), SourceSelector(), pushQuery(((MQLQuery) pop(1)).addNamedGraphURI((Node_URI) pop())));
     }
 
     public Rule WhereClause() {
@@ -313,20 +315,20 @@ public class SPARQL11Parser extends CSPARQLLexer {
 
     public Rule GroupCondition() {
         return FirstOf(
-                Sequence(Var(), pushQuery(((CQuery) pop(1)).addCSPARQLGroupBy((Var) pop()))),
-                Sequence(BuiltInCall(), pushQuery(((CQuery) pop(1)).addCSPARQLGroupBy((Expr) pop()))),
-                Sequence(FunctionCall(), pushQuery(((CQuery) pop(1)).addCSPARQLGroupBy((Expr) pop()))),
+                Sequence(Var(), pushQuery(((MQLQuery) pop(1)).addCSPARQLGroupBy((Var) pop()))),
+                Sequence(BuiltInCall(), pushQuery(((MQLQuery) pop(1)).addCSPARQLGroupBy((Expr) pop()))),
+                Sequence(FunctionCall(), pushQuery(((MQLQuery) pop(1)).addCSPARQLGroupBy((Expr) pop()))),
                 Sequence(OPEN_BRACE(), Expression(),
                         FirstOf(
-                                Sequence(AS(), Var(), CLOSE_BRACE(), pushQuery(((CQuery) pop(2)).addCSPARQLGroupBy((Var) pop(), (Expr) pop()))),
-                                Sequence(CLOSE_BRACE(), pushQuery(((CQuery) pop(1)).addCSPARQLGroupBy((Expr) pop()))))));
+                                Sequence(AS(), Var(), CLOSE_BRACE(), pushQuery(((MQLQuery) pop(2)).addCSPARQLGroupBy((Var) pop(), (Expr) pop()))),
+                                Sequence(CLOSE_BRACE(), pushQuery(((MQLQuery) pop(1)).addCSPARQLGroupBy((Expr) pop()))))));
 
     }
 
     public Rule OrderCondition() {
         return FirstOf(
-                Sequence(FirstOf(ASC(), DESC()), BrackettedExpression(), pushQuery(((CQuery) pop(2)).addOrderBy((Expr) pop(), pop().toString()))),
-                Sequence(FirstOf(Constraint(), Var()), pushQuery(((CQuery) pop(1)).addOrderBy(pop()))));
+                Sequence(FirstOf(ASC(), DESC()), BrackettedExpression(), pushQuery(((MQLQuery) pop(2)).addOrderBy((Expr) pop(), pop().toString()))),
+                Sequence(FirstOf(Constraint(), Var()), pushQuery(((MQLQuery) pop(1)).addOrderBy(pop()))));
     }
 
     public Rule SourceSelector() {

@@ -1,8 +1,8 @@
-package it.polimi.sr.sparql;
+package it.polimi.sr.mql;
 
 import it.polimi.sr.csparql.Register;
 import it.polimi.sr.csparql.Window;
-import it.polimi.sr.mql.EventDecl;
+import it.polimi.sr.sparql.Prefix;
 import lombok.Data;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Node_URI;
@@ -27,7 +27,7 @@ import java.util.*;
  * Created by Riccardo on 05/08/16.
  */
 @Data
-public class CQuery extends org.apache.jena.query.Query {
+public class MQLQuery extends org.apache.jena.query.Query {
 
     private Map<Node, Window> namedwindows;
     private Set<Window> windows;
@@ -35,15 +35,15 @@ public class CQuery extends org.apache.jena.query.Query {
     private Register header;
     private Map<String, EventDecl> eventDeclarations;
 
-    public CQuery(IRIResolver resolver) {
+    public MQLQuery(IRIResolver resolver) {
         setBaseURI(resolver);
     }
 
-    public CQuery(Prologue prologue) {
+    public MQLQuery(Prologue prologue) {
         super(prologue);
     }
 
-    public CQuery setSelectQuery() {
+    public MQLQuery setSelectQuery() {
         setQuerySelectType();
         return this;
     }
@@ -52,43 +52,43 @@ public class CQuery extends org.apache.jena.query.Query {
         return this;
     }
 
-    public CQuery setConstructQuery() {
+    public MQLQuery setConstructQuery() {
         setQueryConstructType();
         return this;
     }
 
-    public CQuery setDescribeQuery() {
+    public MQLQuery setDescribeQuery() {
         setQueryDescribeType();
         return this;
     }
 
-    public CQuery setAskQuery() {
+    public MQLQuery setAskQuery() {
         setQueryAskType();
         return this;
     }
 
-    public CQuery setDistinct() {
+    public MQLQuery setDistinct() {
         setDistinct(true);
         return this;
     }
 
 
-    public CQuery setQueryStar() {
+    public MQLQuery setQueryStar() {
         setQueryResultStar(true);
         return this;
     }
 
-    public CQuery addNamedGraphURI(Node_URI match) {
+    public MQLQuery addNamedGraphURI(Node_URI match) {
         addNamedGraphURI(match.getURI());
         return this;
     }
 
-    public CQuery addGraphURI(Node_URI match) {
+    public MQLQuery addGraphURI(Node_URI match) {
         addGraphURI(match.getURI());
         return this;
     }
 
-    public CQuery addElement(Element sub) {
+    public MQLQuery addElement(Element sub) {
         setQueryPattern(sub);
         return this;
     }
@@ -98,12 +98,12 @@ public class CQuery extends org.apache.jena.query.Query {
         return acc;
     }
 
-    public CQuery setCSPARLQBaseURI(String match) {
+    public MQLQuery setCSPARLQBaseURI(String match) {
         setBaseURI(match);
         return this;
     }
 
-    public CQuery setPrefix(Prefix pop) {
+    public MQLQuery setPrefix(Prefix pop) {
         setPrefix(pop.getPrefix(), pop.getUri());
         return this;
     }
@@ -113,78 +113,78 @@ public class CQuery extends org.apache.jena.query.Query {
 
     }
 
-    public CQuery addOrderBy(Object n) {
+    public MQLQuery addOrderBy(Object n) {
         return (n instanceof Node) ? addOrderBy((Node) n) : addOrderBy((Expr) n);
     }
 
-    public CQuery addOrderBy(Node n) {
+    public MQLQuery addOrderBy(Node n) {
         addOrderBy(n, ORDER_DEFAULT);
         return this;
     }
 
-    public CQuery addOrderBy(Expr n) {
+    public MQLQuery addOrderBy(Expr n) {
         addOrderBy(n, ORDER_DEFAULT);
         return this;
     }
 
-    public CQuery addOrderBy(Expr pop, String s) {
+    public MQLQuery addOrderBy(Expr pop, String s) {
         addOrderBy(pop, "DESC".equals(s) ? ORDER_DESCENDING : ORDER_ASCENDING);
         return this;
     }
 
-    public CQuery setLimit(String limit) {
+    public MQLQuery setLimit(String limit) {
         setLimit(Integer.parseInt(limit.trim()));
         return this;
     }
 
-    public CQuery setOffset(String offset) {
+    public MQLQuery setOffset(String offset) {
         setOffset(Integer.parseInt(offset.trim()));
         return this;
     }
 
-    public CQuery addCSPARQLGroupBy(Expr pop) {
+    public MQLQuery addCSPARQLGroupBy(Expr pop) {
         addGroupBy((Var) null, pop);
         return this;
     }
 
-    public CQuery addCSPARQLGroupBy(Var v, Expr pop) {
+    public MQLQuery addCSPARQLGroupBy(Var v, Expr pop) {
         addGroupBy(v, pop);
         return this;
     }
 
-    public CQuery addCSPARQLGroupBy(Var v) {
+    public MQLQuery addCSPARQLGroupBy(Var v) {
         addGroupBy(v);
         return this;
     }
 
-    public CQuery setReduced() {
+    public MQLQuery setReduced() {
         setReduced(true);
         return this;
     }
 
-    public CQuery addCSPARQLCResultVar(Node pop, Expr pop1) {
+    public MQLQuery addCSPARQLCResultVar(Node pop, Expr pop1) {
         addCSPARQLCResultVar(pop, pop1);
         setQueryResultStar(false);
         return this;
     }
 
-    public CQuery addCSPARQLCResultVar(Node pop) {
+    public MQLQuery addCSPARQLCResultVar(Node pop) {
         addResultVar(pop);
         setQueryResultStar(false);
         return this;
     }
 
-    public CQuery addCSPARQLCHavingCondition(Expr pop) {
+    public MQLQuery addCSPARQLCHavingCondition(Expr pop) {
         addHavingCondition(pop);
         return this;
     }
 
-    public CQuery setCSPARQLConstructTemplate(Template template) {
+    public MQLQuery setCSPARQLConstructTemplate(Template template) {
         setConstructTemplate(template);
         return this;
     }
 
-    public CQuery addCSPARQLCDescribeNode(Node pop) {
+    public MQLQuery addCSPARQLCDescribeNode(Node pop) {
         addDescribeNode(pop);
         setQueryResultStar(false);
         return this;
@@ -196,7 +196,7 @@ public class CQuery extends org.apache.jena.query.Query {
         return iri.toString();
     }
 
-    public CQuery addNamedWindow(Window pop) {
+    public MQLQuery addNamedWindow(Window pop) {
         if (namedwindows == null)
             namedwindows = new HashMap<Node, Window>();
         if (namedwindows.containsKey(pop.getIri()))
@@ -206,7 +206,7 @@ public class CQuery extends org.apache.jena.query.Query {
         return this;
     }
 
-    public CQuery addWindow(Window pop) {
+    public MQLQuery addWindow(Window pop) {
 
         if (pop.getIri() != null) {
             return addNamedWindow(pop);
@@ -221,7 +221,7 @@ public class CQuery extends org.apache.jena.query.Query {
         return this;
     }
 
-    public CQuery addElement(ElementNamedGraph elm) {
+    public MQLQuery addElement(ElementNamedGraph elm) {
         if (windowGraphElements == null) {
             windowGraphElements = new ArrayList<ElementNamedGraph>();
         }
@@ -235,12 +235,12 @@ public class CQuery extends org.apache.jena.query.Query {
         return super.toString();
     }
 
-    public CQuery setRegister(Register register) {
+    public MQLQuery setRegister(Register register) {
         this.header = register;
         return this;
     }
 
-    public CQuery addEventDecl(EventDecl ed) {
+    public MQLQuery addEventDecl(EventDecl ed) {
         if (eventDeclarations == null)
             eventDeclarations = new HashMap<String, EventDecl>();
         eventDeclarations.put(ed.getHead(), ed);

@@ -1,7 +1,6 @@
 package it.polimi.sr.csparql;
 
 import it.polimi.sr.sparql.SPARQL11Lexer;
-import it.polimi.sr.sparql.SPARQL11Parser;
 import org.parboiled.Rule;
 
 /**

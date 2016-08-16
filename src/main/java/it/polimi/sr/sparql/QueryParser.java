@@ -1,5 +1,6 @@
 package it.polimi.sr.sparql;
 
+import it.polimi.sr.mql.MQLQuery;
 import org.apache.jena.datatypes.RDFDatatype;
 import org.apache.jena.datatypes.TypeMapper;
 import org.apache.jena.graph.Node;
@@ -69,23 +70,23 @@ public class QueryParser extends BaseParser<Object> {
         return activeLabelMap.equals(anonVarLabels);
     }
 
-    public CQuery getQuery(int i) {
+    public MQLQuery getQuery(int i) {
         if (i == -1) {
             int size = getContext().getValueStack().size();
             i = size > 0 ? size - 1 : 0;
         }
-        return (CQuery) peek(i);
+        return (MQLQuery) peek(i);
     }
 
-    public CQuery popQuery(int i) {
+    public MQLQuery popQuery(int i) {
         if (i == -1) {
             int size = getContext().getValueStack().size();
             i = size > 0 ? size - 1 : 0;
         }
-        return (CQuery) pop(i);
+        return (MQLQuery) pop(i);
     }
 
-    public boolean pushQuery(CQuery q) {
+    public boolean pushQuery(MQLQuery q) {
         return push(0, q);
     }
 
@@ -232,7 +233,7 @@ public class QueryParser extends BaseParser<Object> {
     }
 
     public boolean startSubQuery(int i) {
-        return push(new CQuery(getQuery(i).getQ().getPrologue()));
+        return push(new MQLQuery(getQuery(i).getQ().getPrologue()));
     }
 
     public boolean endSubQuery() {

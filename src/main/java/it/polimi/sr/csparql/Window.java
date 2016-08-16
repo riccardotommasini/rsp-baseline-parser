@@ -34,6 +34,8 @@ public class Window {
     @Setter(AccessLevel.NONE)
     final private Pattern p = Pattern.compile(regex);
 
+    private WindowType type = WindowType.Logical;
+
     public Window addConstrain(String match) {
         //TODO hide visibility out of the package
         Matcher matcher = p.matcher(match);
@@ -41,6 +43,10 @@ public class Window {
             MatchResult res = matcher.toMatchResult();
             this.beta = this.omega = Integer.parseInt(res.group(1));
             this.unit_beta = this.unit_omega = res.group(2);
+            if ("GRAPH".equals(unit_omega) || "TRIPLE".equals(unit_omega)) {
+                this.type = WindowType.Physical;
+            }
+
         }
         return this;
     }
@@ -52,16 +58,24 @@ public class Window {
             MatchResult res = matcher.toMatchResult();
             this.beta = Integer.parseInt(res.group(1));
             this.unit_beta = res.group(2);
+            if ("GRAPH".equals(unit_beta) || "TRIPLE".equals(unit_beta)) {
+                this.type = WindowType.Physical;
+            }
         }
         return this;
     }
 
     public Window addStreamUri(Node_URI uri) {
+        //TODO hide visibility out of the package
         if (stream == null) {
             stream = new Stream(uri);
         }
-        stream.setIri(uri); //TODO hide visibility out of the package
+        stream.setIri(uri);
         return this;
+    }
+
+    public enum WindowType {
+        Logical, Physical;
     }
 
 }
