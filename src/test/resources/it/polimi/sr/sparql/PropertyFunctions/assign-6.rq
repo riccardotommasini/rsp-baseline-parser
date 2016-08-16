@@ -1,0 +1,6 @@
+# java: route
+PREFIX :        <http://example.org/>
+PREFIX apf:     <http://jena.apache.org/ARQ/property#>
+
+SELECT *
+{ ?s apf:assign "v" . }
