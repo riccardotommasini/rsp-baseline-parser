@@ -1,5 +1,7 @@
 package it.polimi.sr.sparql;
 
+import it.polimi.sr.mql.MQLParser;
+import it.polimi.sr.mql.MQLQuery;
 import org.apache.commons.io.Charsets;
 import org.apache.commons.io.IOUtils;
 import org.apache.jena.query.QueryFactory;
@@ -34,7 +36,7 @@ public class Sparql11QueryTest {
 
     private static boolean res;
     private static String f;
-    private static final String folder = "sparql/";
+    private static final String folder = "tests/";
 
     @Parameters
     public static Collection<Object[]> data() throws IOException {
@@ -86,10 +88,10 @@ public class Sparql11QueryTest {
         System.out.println(input);
         toCompare = QueryFactory.create(input);
 
-        SPARQL11Parser parser = Parboiled.createParser(SPARQL11Parser.class);
+        MQLParser parser = Parboiled.createParser(MQLParser.class);
         parser.setResolver(IRIResolver.create());
         ReportingParseRunner reportingParseRunner = new ReportingParseRunner(parser.Query());
-        ParsingResult<CQuery> result = reportingParseRunner.run(input);
+        ParsingResult<MQLQuery> result = reportingParseRunner.run(input);
         if (result.hasErrors()) {
             for (ParseError e : result.parseErrors) {
                 System.out.println(e.getStartIndex());
