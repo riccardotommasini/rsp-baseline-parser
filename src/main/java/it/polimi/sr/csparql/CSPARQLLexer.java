@@ -1,12 +1,12 @@
 package it.polimi.sr.csparql;
 
-import it.polimi.sr.sparql.SPARQL11Lexer;
+import it.polimi.sr.mql.MQLLexer;
 import org.parboiled.Rule;
 
 /**
  * Created by Riccardo on 12/08/16.
  */
-public class CSPARQLLexer extends SPARQL11Lexer{
+public class CSPARQLLexer extends MQLLexer {
 
     public Rule REGISTER() {
         return StringIgnoreCaseWS("REGISTER");

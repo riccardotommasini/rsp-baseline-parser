@@ -1,6 +1,6 @@
 import it.polimi.sr.csparql.Window;
-import it.polimi.sr.sparql.CQuery;
-import it.polimi.sr.sparql.SPARQL11Parser;
+import it.polimi.sr.mql.MQLQuery;
+import it.polimi.sr.mql.MQLParser;
 import org.apache.commons.io.FileUtils;
 import org.apache.jena.graph.Node;
 import org.apache.jena.query.SortCondition;
@@ -27,13 +27,13 @@ public class CSPARQLMain {
 
         String input = getInput();
 
-        SPARQL11Parser parser = Parboiled.createParser(SPARQL11Parser.class);
+        MQLParser parser = Parboiled.createParser(MQLParser.class);
 
         parser.setResolver(IRIResolver.create());
 
-        ParsingResult<CQuery> result = new ReportingParseRunner(parser.Query()).run(input);
+        ParsingResult<MQLQuery> result = new ReportingParseRunner(parser.Query()).run(input);
 
-        CQuery q = result.resultValue;
+        MQLQuery q = result.resultValue;
 
         System.out.println(q.toString());
         print(q);
@@ -41,7 +41,7 @@ public class CSPARQLMain {
         SyntaxVarScope.check(q);
     }
 
-    private static void print(CQuery q) {
+    private static void print(MQLQuery q) {
         System.out.println("---");
         System.out.println(q.getGraphURIs());
         System.out.println(q.getQueryType());
