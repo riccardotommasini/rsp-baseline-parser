@@ -54,8 +54,8 @@ public class QueryParser extends BaseParser<Object> {
     // 2/ Each BasicGraphPattern is a scope for blank node labels so each
     //    BGP causes the map to be cleared at the start of the BGP
 
-    LabelToNodeMap activeLabelMap = anonVarLabels;
-    Set<String> previousLabels = new HashSet<String>();
+    protected LabelToNodeMap activeLabelMap = anonVarLabels;
+    protected Set<String> previousLabels = new HashSet<String>();
 
     private IRIResolver resolver;
 
@@ -69,23 +69,23 @@ public class QueryParser extends BaseParser<Object> {
         return activeLabelMap.equals(anonVarLabels);
     }
 
-    public Query getQuery(int i) {
+    public CQuery getQuery(int i) {
         if (i == -1) {
             int size = getContext().getValueStack().size();
             i = size > 0 ? size - 1 : 0;
         }
-        return (Query) peek(i);
+        return (CQuery) peek(i);
     }
 
-    public Query popQuery(int i) {
+    public CQuery popQuery(int i) {
         if (i == -1) {
             int size = getContext().getValueStack().size();
             i = size > 0 ? size - 1 : 0;
         }
-        return (Query) pop(i);
+        return (CQuery) pop(i);
     }
 
-    public boolean pushQuery(Query q) {
+    public boolean pushQuery(CQuery q) {
         return push(0, q);
     }
 
@@ -232,7 +232,7 @@ public class QueryParser extends BaseParser<Object> {
     }
 
     public boolean startSubQuery(int i) {
-        return push(new Query(getQuery(i).getQ().getPrologue()));
+        return push(new CQuery(getQuery(i).getQ().getPrologue()));
     }
 
     public boolean endSubQuery() {

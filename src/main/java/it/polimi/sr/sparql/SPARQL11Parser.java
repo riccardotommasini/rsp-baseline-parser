@@ -1,6 +1,9 @@
 package it.polimi.sr.sparql;
 
-import it.polimi.sr.sparql.it.polimi.sr.csparql.WindowBuilder;
+import it.polimi.sr.csparql.CSPARQLLexer;
+import it.polimi.sr.csparql.Register;
+import it.polimi.sr.csparql.Window;
+import it.polimi.sr.mql.EventDecl;
 import org.apache.jena.atlas.lib.EscapeStr;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.graph.Node;
@@ -18,104 +21,52 @@ import org.parboiled.Rule;
 /**
  * Created by Riccardo on 09/08/16.
  */
-public class SPARQL11Parser extends SPARQL11Lexer {
+public class SPARQL11Parser extends CSPARQLLexer {
 
     public Rule Query() {
-        return Sequence(push(new Query(getResolver())), WS(), Optional(Registration()), Prologue(), Optional(CreateEventClause()), FirstOf(SelectQuery(), ConstructQuery(), AskQuery(), DescribeQuery()), ValuesClause()
+        return Sequence(push(new CQuery(getResolver())), WS(), Optional(Registration()), Prologue(), Optional(CreateEventClause())
+                , FirstOf(SelectQuery(), ConstructQuery(), AskQuery(), DescribeQuery()), ValuesClause()
                 , EOI);
     }
 
     public Rule CreateEventClause() {
-        return Sequence(CREATE(), Var(), drop(), OPEN_CURLY_BRACE(), DLBlock(), CLOSE_CURLY_BRACE());
+        return Sequence(CREATE(), EVENT(), Var(), OPEN_CURLY_BRACE(), EventDef()
+                , pushQuery(popQuery(1).addEventDecl(new EventDecl((Var) pop(), match()))), CLOSE_CURLY_BRACE());
     }
 
-
-    public Rule DLBlock() {
-        return FirstOf(ZeroOrMore(FirstOf(SubClassBlock(), EquivalentTo(), Optional(FirstOf(or(), and()))))
-                , Sequence(Verb(), drop(), FirstOf(Restrictions(), CardinalityRestriction())));
+    public Rule EventDef() {
+        return ZeroOrMore(Sequence(TestNot('}'), ANY), WS());
     }
 
-    public Rule CardinalityRestriction() {
-        return Sequence(FirstOf(min(), max()), Optional(EQUAL()), RdfLiteral(), drop());
-    }
-
-    public Rule Restrictions() {
-        return Sequence(FirstOf(some(), any()), IriRef(), drop());
-    }
-
-    public Rule SubClassBlock() {
-        return FirstOf(Sequence(SubClassOf(), IriRef()), Sequence(SubClassOf(), OPEN_BRACE(), DLBlock(), CLOSE_BRACE()));
-    }
-
-    public Rule EquivalentTo() {
-        return StringWS("owl:EquivalentTo");
-
-    }
-
-    public Rule SubClassOf() {
-        return StringWS("rdfs:SubClassOf");
-
-    }
-
-    public Rule some() {
-        return StringWS("some");
-
-    }
-
-    public Rule any() {
-        return StringWS("any");
-
-    }
-
-
-    public Rule and() {
-        return StringWS("and");
-
-    }
-
-    public Rule or() {
-        return StringWS("or");
-
-    }
-
-    public Rule min() {
-        return StringWS("min");
-    }
-
-    public Rule max() {
-        return StringWS("max");
+    public Rule EVENT() {
+        return StringIgnoreCaseWS("EVENT");
     }
 
     public Rule CREATE() {
         return StringIgnoreCaseWS("CREATE");
     }
 
-    public Rule IF() {
-        return StringIgnoreCaseWS("IF");
-    }
 
     public Rule Prologue() {
         return Sequence(Optional(BaseDecl()), ZeroOrMore(PrefixDecl()));
     }
 
     public Rule Registration() {
-        return Sequence(REGISTER(), FirstOf(RegisterQuery(), RegisterStream()), COMPUTED(), EVERY(), TimeConstrain(), AS(), WS());
+        return Sequence(REGISTER(), push(new Register()),
+                FirstOf(STREAM(), QUERY()), push(((Register) pop()).setType(Register.Type.valueOf(trimMatch()))),
+                FirstOf(String(), VARNAME()), push(((Register) pop()).setId((match()))), WS(),
+                COMPUTED(), EVERY(), TimeConstrain(), push(((Register) pop()).addCompute((match()))),
+                AS(), WS()
+                , pushQuery(popQuery(1).setRegister((Register) pop())));
     }
 
-    public Rule RegisterStream() {
-        return Sequence(STREAM(), FirstOf(String(), VARNAME()), WS());
-    }
-
-    public Rule RegisterQuery() {
-        return Sequence(QUERY(), FirstOf(String(), VARNAME()), WS());
-    }
 
     public Rule BaseDecl() {
-        return Sequence(BASE(), IRI_REF(), pushQuery(((Query) pop(0)).setCSPARLQBaseURI(trimMatch().replace(">", "").replace("<", ""))), WS());
+        return Sequence(BASE(), IRI_REF(), pushQuery(((CQuery) pop(0)).setCSPARLQBaseURI(trimMatch().replace(">", "").replace("<", ""))), WS());
     }
 
     public Rule PrefixDecl() {
-        return Sequence(PrefixBuild(), pushQuery(((Query) pop(1)).setPrefix((Prefix) pop())), WS());
+        return Sequence(PrefixBuild(), pushQuery(((CQuery) pop(1)).setPrefix((Prefix) pop())), WS());
     }
 
     public Rule PrefixBuild() {
@@ -160,9 +111,9 @@ public class SPARQL11Parser extends SPARQL11Lexer {
                 FirstOf(Sequence(ASTERISK(), pushQuery(popQuery(0).setQueryStar())),
                         OneOrMore(
                                 FirstOf(
-                                        Sequence(Var(), pushQuery(((Query) pop(1)).addCSPARQLCResultVar((Node) pop()))),
+                                        Sequence(Var(), pushQuery(((CQuery) pop(1)).addCSPARQLCResultVar((Node) pop()))),
                                         Sequence(OPEN_BRACE(), Expression(), AS(), Var(), CLOSE_BRACE(),
-                                                pushQuery(((Query) pop(2)).addCSPARQLCResultVar((Node) pop(), (Expr) pop())))))));
+                                                pushQuery(((CQuery) pop(2)).addCSPARQLCResultVar((Node) pop(), (Expr) pop())))))));
     }
 
     public Rule ConstructWhereClause() {
@@ -183,88 +134,50 @@ public class SPARQL11Parser extends SPARQL11Lexer {
     }
 
     public Rule DatastreamClause() {
-        return Sequence(FROM(), NAMED(), WindowClause(), ON(), STREAM(), SourceSelector(), drop()); //TODO drop to compile
+        return Sequence(FROM(), FirstOf(DefaultStreamClause(), NamedStreamClause()), pushQuery(popQuery(1).addWindow((Window) pop()))); //TODO drop to compile
+    }
+
+    public Rule DefaultStreamClause() {
+        return Sequence(WINDOW(), push(new Window()), WindowClause(), ON(), STREAM(), SourceSelector(), push(((Window) pop(1)).addStreamUri(((Node_URI) pop()))));
+    }
+
+    public Rule NamedStreamClause() {
+        return Sequence(NAMED(), WINDOW(), SourceSelector(), push(new Window((Node) pop())), WindowClause(), ON(), STREAM(), SourceSelector(), push(((Window) pop(1)).addStreamUri(((Node_URI) pop()))));
     }
 
     public Rule WindowClause() {
-        return Sequence(WINDOW(), OPEN_SQUARE_BRACE(), RANGE(), push(new WindowBuilder()), WindowDef(), CLOSE_SQUARE_BRACE());
+        return Sequence(OPEN_SQUARE_BRACE(), RANGE(), WindowDef(), CLOSE_SQUARE_BRACE());
     }
 
-    public Rule TimeConstrain() {
-        return Sequence(NumericLiteral(), TIME_UNIT());
-    }
-
-    public Rule PhysicalConstrain() {
-        return Sequence(TRIPLES(), NumericLiteral(), drop());
-    }
 
     public Rule WindowDef() {
         return FirstOf(LogicalWindow(), PhysicalWindow());
     }
 
     public Rule LogicalWindow() {
-        return Sequence(TimeConstrain(), COMMA(), FirstOf(Sequence(SLIDE(), TimeConstrain()), TUMBLING()));
+        return Sequence(TimeConstrain(), push((((Window) pop())).addConstrain(match())), COMMA(),
+                FirstOf(Sequence(SLIDE(), TimeConstrain(), push((((Window) pop())).addSlide(trimMatch()))), TUMBLING()), WS());
     }
 
     public Rule PhysicalWindow() {
-        return Sequence(PhysicalConstrain(), COMMA(), FirstOf(Sequence(SLIDE(), PhysicalConstrain()), TUMBLING()));
+        return Sequence(PhysicalConstrain(), push((((Window) pop())).addConstrain(match())), COMMA(),
+                FirstOf(Sequence(SLIDE(), PhysicalConstrain(), push((((Window) pop())).addSlide(trimMatch()))), TUMBLING()));
     }
 
-    public Rule REGISTER() {
-        return StringIgnoreCaseWS("REGISTER");
+    public Rule TimeConstrain() {
+        return Sequence(INTEGER(), TIME_UNIT());
     }
 
-    public Rule QUERY() {
-        return StringIgnoreCaseWS("QUERY");
-    }
-
-    public Rule EVERY() {
-        return StringIgnoreCaseWS("EVERY");
-    }
-
-
-    public Rule COMPUTED() {
-        return StringIgnoreCaseWS("COMPUTED");
-    }
-
-    public Rule TIME_UNIT() {
-        return Sequence(FirstOf("ms", 's', 'm', 'h', 'd'), WS());
-    }
-
-    public Rule TRIPLES() {
-        return StringIgnoreCaseWS("TRIPLES");
-    }
-
-    public Rule TUMBLING() {
-        return StringIgnoreCaseWS("TUMBLING");
-    }
-
-    public Rule SLIDE() {
-        return StringIgnoreCaseWS("SLIDE");
-    }
-
-    public Rule WINDOW() {
-        return StringIgnoreCaseWS("WINDOW");
-    }
-
-    public Rule RANGE() {
-        return StringIgnoreCaseWS("RANGE");
-    }
-
-    public Rule ON() {
-        return StringIgnoreCaseWS("ON");
-    }
-
-    public Rule STREAM() {
-        return StringIgnoreCaseWS("STREAM");
+    public Rule PhysicalConstrain() {
+        return Sequence(INTEGER(), FirstOf(TRIPLES(), GRAPH()));
     }
 
     public Rule DefaultGraphClause() {
-        return Sequence(SourceSelector(), pushQuery(((Query) pop(1)).addGraphURI((Node_URI) pop())));
+        return Sequence(SourceSelector(), pushQuery(((CQuery) pop(1)).addGraphURI((Node_URI) pop())));
     }
 
     public Rule NamedGraphClause() {
-        return Sequence(NAMED(), SourceSelector(), pushQuery(((Query) pop(1)).addNamedGraphURI((Node_URI) pop())));
+        return Sequence(NAMED(), SourceSelector(), pushQuery(((CQuery) pop(1)).addNamedGraphURI((Node_URI) pop())));
     }
 
     public Rule WhereClause() {
@@ -351,20 +264,20 @@ public class SPARQL11Parser extends SPARQL11Lexer {
 
     public Rule GroupCondition() {
         return FirstOf(
-                Sequence(Var(), pushQuery(((Query) pop(1)).addCSPARQLGroupBy((Var) pop()))),
-                Sequence(BuiltInCall(), pushQuery(((Query) pop(1)).addCSPARQLGroupBy((Expr) pop()))),
-                Sequence(FunctionCall(), pushQuery(((Query) pop(1)).addCSPARQLGroupBy((Expr) pop()))),
+                Sequence(Var(), pushQuery(((CQuery) pop(1)).addCSPARQLGroupBy((Var) pop()))),
+                Sequence(BuiltInCall(), pushQuery(((CQuery) pop(1)).addCSPARQLGroupBy((Expr) pop()))),
+                Sequence(FunctionCall(), pushQuery(((CQuery) pop(1)).addCSPARQLGroupBy((Expr) pop()))),
                 Sequence(OPEN_BRACE(), Expression(),
                         FirstOf(
-                                Sequence(AS(), Var(), CLOSE_BRACE(), pushQuery(((Query) pop(2)).addCSPARQLGroupBy((Var) pop(), (Expr) pop()))),
-                                Sequence(CLOSE_BRACE(), pushQuery(((Query) pop(1)).addCSPARQLGroupBy((Expr) pop()))))));
+                                Sequence(AS(), Var(), CLOSE_BRACE(), pushQuery(((CQuery) pop(2)).addCSPARQLGroupBy((Var) pop(), (Expr) pop()))),
+                                Sequence(CLOSE_BRACE(), pushQuery(((CQuery) pop(1)).addCSPARQLGroupBy((Expr) pop()))))));
 
     }
 
     public Rule OrderCondition() {
         return FirstOf(
-                Sequence(FirstOf(ASC(), DESC()), BrackettedExpression(), pushQuery(((Query) pop(2)).addOrderBy((Expr) pop(), pop().toString()))),
-                Sequence(FirstOf(Constraint(), Var()), pushQuery(((Query) pop(1)).addOrderBy(pop()))));
+                Sequence(FirstOf(ASC(), DESC()), BrackettedExpression(), pushQuery(((CQuery) pop(2)).addOrderBy((Expr) pop(), pop().toString()))),
+                Sequence(FirstOf(Constraint(), Var()), pushQuery(((CQuery) pop(1)).addOrderBy(pop()))));
     }
 
     public Rule SourceSelector() {
@@ -411,8 +324,11 @@ public class SPARQL11Parser extends SPARQL11Lexer {
     }
 
     public boolean addNamedWindowElement() {
-        return addNamedGraphElement();
+        ElementNamedGraph value = new ElementNamedGraph((Node) pop(), popElement());
+        getQuery(-1).addElement(value);
+        return push(value);
     }
+
 
     public Rule GroupOrUnionGraphPattern() {
         return FirstOf(UnionGraphPattern(), GroupGraphPattern());
