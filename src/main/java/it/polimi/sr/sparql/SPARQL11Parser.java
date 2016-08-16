@@ -21,8 +21,77 @@ import org.parboiled.Rule;
 public class SPARQL11Parser extends SPARQL11Lexer {
 
     public Rule Query() {
-        return Sequence(push(new Query(getResolver())), WS(), Optional(Registration()), Prologue(), FirstOf(SelectQuery(), ConstructQuery(), AskQuery(), DescribeQuery()), ValuesClause()
+        return Sequence(push(new Query(getResolver())), WS(), Optional(Registration()), Prologue(), Optional(CreateEventClause()), FirstOf(SelectQuery(), ConstructQuery(), AskQuery(), DescribeQuery()), ValuesClause()
                 , EOI);
+    }
+
+    public Rule CreateEventClause() {
+        return Sequence(CREATE(), Var(), drop(), OPEN_CURLY_BRACE(), DLBlock(), CLOSE_CURLY_BRACE());
+    }
+
+
+    public Rule DLBlock() {
+        return FirstOf(ZeroOrMore(FirstOf(SubClassBlock(), EquivalentTo(), Optional(FirstOf(or(), and()))))
+                , Sequence(Verb(), drop(), FirstOf(Restrictions(), CardinalityRestriction())));
+    }
+
+    public Rule CardinalityRestriction() {
+        return Sequence(FirstOf(min(), max()), Optional(EQUAL()), RdfLiteral(), drop());
+    }
+
+    public Rule Restrictions() {
+        return Sequence(FirstOf(some(), any()), IriRef(), drop());
+    }
+
+    public Rule SubClassBlock() {
+        return FirstOf(Sequence(SubClassOf(), IriRef()), Sequence(SubClassOf(), OPEN_BRACE(), DLBlock(), CLOSE_BRACE()));
+    }
+
+    public Rule EquivalentTo() {
+        return StringWS("owl:EquivalentTo");
+
+    }
+
+    public Rule SubClassOf() {
+        return StringWS("rdfs:SubClassOf");
+
+    }
+
+    public Rule some() {
+        return StringWS("some");
+
+    }
+
+    public Rule any() {
+        return StringWS("any");
+
+    }
+
+
+    public Rule and() {
+        return StringWS("and");
+
+    }
+
+    public Rule or() {
+        return StringWS("or");
+
+    }
+
+    public Rule min() {
+        return StringWS("min");
+    }
+
+    public Rule max() {
+        return StringWS("max");
+    }
+
+    public Rule CREATE() {
+        return StringIgnoreCaseWS("CREATE");
+    }
+
+    public Rule IF() {
+        return StringIgnoreCaseWS("IF");
     }
 
     public Rule Prologue() {

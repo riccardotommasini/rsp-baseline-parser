@@ -28,7 +28,6 @@ import org.parboiled.annotations.BuildParseTree;
  *
  * @author Ken Wenzel, adapted by Mathias Doenitz
  */
-@SuppressWarnings({"InfiniteRecursion"})
 @BuildParseTree
 public class SPARQL11Lexer extends QueryParser {
 
