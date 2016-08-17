@@ -8,6 +8,7 @@ import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Node_URI;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.iri.IRI;
+import org.apache.jena.query.Query;
 import org.apache.jena.query.QueryException;
 import org.apache.jena.riot.checker.CheckerIRI;
 import org.apache.jena.riot.system.ErrorHandlerFactory;
@@ -27,7 +28,7 @@ import java.util.*;
  * Created by Riccardo on 05/08/16.
  */
 @Data
-public class MQLQuery extends org.apache.jena.query.Query {
+public class MQLQuery extends Query {
 
     private Map<Node, Window> namedwindows;
     private Set<Window> windows;

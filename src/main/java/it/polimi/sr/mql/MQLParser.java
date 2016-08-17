@@ -34,11 +34,23 @@ public class MQLParser extends CSPARQLLexer {
 
     public Rule CreateEventClause() {
         return Sequence(CREATE(), EVENT(), Var(), OPEN_CURLY_BRACE(), EventDef()
-                , pushQuery(popQuery(1).addEventDecl(new EventDecl((Var) pop(), match()))), CLOSE_CURLY_BRACE());
+                , push(new EventDecl((Var) pop(), match())),
+                Optional(IfClause(), addIF((IFDecl) pop())), CLOSE_CURLY_BRACE(),
+                pushQuery(popQuery(1).addEventDecl((EventDecl) pop())));
+    }
+
+    public boolean addIF(IFDecl pop) {
+        pop.build();
+        ((EventDecl) peek()).addIF(pop);
+        return true;
+    }
+
+    public Rule IfClause() {
+        return Sequence(IF(), OPEN_CURLY_BRACE(), Optional(TriplesBlock(), push(new IFDecl(popElement()))), CLOSE_CURLY_BRACE());
     }
 
     public Rule EventDef() {
-        return ZeroOrMore(Sequence(TestNot('}'), ANY), WS());
+        return ZeroOrMore(Sequence(TestNot(FirstOf("IF", "}")), ANY), WS());
     }
 
 
