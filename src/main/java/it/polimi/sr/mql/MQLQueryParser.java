@@ -1,6 +1,5 @@
 package it.polimi.sr.mql;
 
-import it.polimi.sr.mql .MQLQuery;
 import it.polimi.sr.sparql.Function;
 import it.polimi.sr.sparql.ValuesClauseBuilder;
 import org.apache.jena.datatypes.RDFDatatype;
@@ -97,7 +96,7 @@ public class MQLQueryParser extends BaseParser<Object> {
     }
 
     public boolean addElementToQuery() {
-        getQuery(1).addElement(popElement());
+        getQuery(1).addElement((ElementGroup) popElement());
         return true;
     }
 
@@ -136,7 +135,7 @@ public class MQLQueryParser extends BaseParser<Object> {
     }
 
     public boolean addUnionElement() {
-        ((ElementUnion) peek(1)).addElement(popElement());
+        ((ElementUnion) peek(1)).addElement((ElementGroup) popElement());
         return true;
     }
 

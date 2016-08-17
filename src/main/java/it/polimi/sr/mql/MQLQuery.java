@@ -9,18 +9,18 @@ import org.apache.jena.graph.Node_URI;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.iri.IRI;
 import org.apache.jena.query.Query;
+import org.apache.jena.query.QueryBuildException;
 import org.apache.jena.query.QueryException;
 import org.apache.jena.riot.checker.CheckerIRI;
 import org.apache.jena.riot.system.ErrorHandlerFactory;
 import org.apache.jena.riot.system.IRIResolver;
 import org.apache.jena.sparql.core.Prologue;
+import org.apache.jena.sparql.core.TriplePath;
 import org.apache.jena.sparql.core.Var;
+import org.apache.jena.sparql.core.VarExprList;
 import org.apache.jena.sparql.expr.Expr;
 import org.apache.jena.sparql.expr.aggregate.Aggregator;
-import org.apache.jena.sparql.syntax.Element;
-import org.apache.jena.sparql.syntax.ElementNamedGraph;
-import org.apache.jena.sparql.syntax.Template;
-import org.apache.jena.sparql.syntax.TripleCollectorMark;
+import org.apache.jena.sparql.syntax.*;
 
 import java.util.*;
 
@@ -35,6 +35,9 @@ public class MQLQuery extends Query {
     private List<ElementNamedGraph> windowGraphElements;
     private Register header;
     private Map<String, EventDecl> eventDeclarations;
+    private boolean MQLQyeryStar;
+    protected VarExprList MQLprojectVars = new VarExprList();
+    private boolean MQLresultVarsSet;
 
     public MQLQuery(IRIResolver resolver) {
         setBaseURI(resolver);
@@ -89,8 +92,22 @@ public class MQLQuery extends Query {
         return this;
     }
 
-    public MQLQuery addElement(Element sub) {
+    public MQLQuery addElement(ElementGroup sub) {
         setQueryPattern(sub);
+
+        TripleCollectorBGP collector = new TripleCollectorBGP();
+        List<Element> elements = sub.getElements();
+        for (Element element : elements) {
+            if (element instanceof ElementPathBlock) {
+                ElementPathBlock epb = (ElementPathBlock) element;
+                List<TriplePath> list = epb.getPattern().getList();
+                for (TriplePath triplePath : list) {
+                    collector.addTriple(triplePath.asTriple());
+                }
+            }
+        }
+        Template template = new Template(collector.getBGP());
+        setCSPARQLConstructTemplate(template);
         return this;
     }
 
@@ -247,4 +264,38 @@ public class MQLQuery extends Query {
         eventDeclarations.put(ed.getHead(), ed);
         return this;
     }
+
+    public MQLQuery addEmitVar(Node v) {
+        if (!v.isVariable())
+            throw new QueryException("Not a variable: " + v);
+        this.MQLQyeryStar = false;
+        return addEmitVar(v.getName());
+    }
+
+    public MQLQuery addEmitVar(String name) {
+        Var v = Var.alloc(name);
+        this.MQLresultVarsSet = true;
+        return _addMQLVar(MQLprojectVars, v);
+    }
+
+    private MQLQuery _addMQLVar(VarExprList varlist, Var v) {
+        if (varlist == null)
+            varlist = new VarExprList();
+
+        if (varlist.contains(v)) {
+            Expr expr = varlist.getExpr(v);
+            if (expr != null)
+                throw new QueryBuildException("Duplicate variable (had an expression) in result projection '" + v + "'");
+        }
+        varlist.add(v);
+        return this;
+    }
+
+
+    public MQLQuery setMQLQueryStar() {
+        this.MQLQyeryStar = true;
+        return this;
+    }
+
+
 }

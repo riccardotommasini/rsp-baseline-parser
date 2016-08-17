@@ -317,7 +317,6 @@ public class MQLLexer extends MQLQueryParser {
         return StringIgnoreCaseWS("FALSE");
     }
 
-
     public Rule IRI_REF() {
         return Sequence(LESS_NO_COMMENT(),
                 ZeroOrMore(Sequence(TestNot(FirstOf(LESS_NO_COMMENT(), GREATER(), '"', OPEN_CURLY_BRACE(),
@@ -630,7 +629,6 @@ public class MQLLexer extends MQLQueryParser {
         return StringIgnoreCaseWS("EVERY");
     }
 
-
     public Rule COMPUTED() {
         return StringIgnoreCaseWS("COMPUTED");
     }
@@ -666,4 +664,35 @@ public class MQLLexer extends MQLQueryParser {
     public Rule STREAM() {
         return StringIgnoreCaseWS("STREAM");
     }
+
+    //MQL
+    public Rule EVENT() {
+        return StringIgnoreCaseWS("EVENT");
+    }
+
+    public Rule CREATE() {
+        return StringIgnoreCaseWS("CREATE");
+    }
+
+    public Rule AND_() {
+        return StringIgnoreCaseWS("AND");
+    }
+
+    public Rule OR_() {
+        return StringIgnoreCaseWS("OR");
+    }
+
+    public Rule FOLLOWED_BY() {
+        return FirstOf(StringWS("->"), StringIgnoreCaseWS("FOLLOWED_BY"), Sequence(StringIgnoreCaseWS("FOLLOWED"), BY()));
+    }
+
+    public Rule MATCH() {
+        return StringIgnoreCaseWS("MATCH");
+    }
+
+    public Rule EMIT() {
+        return StringIgnoreCaseWS("EMIT");
+    }
+
+
 }

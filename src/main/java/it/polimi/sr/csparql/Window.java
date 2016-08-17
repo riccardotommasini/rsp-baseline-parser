@@ -14,7 +14,6 @@ import java.util.regex.Pattern;
 @Data
 @NoArgsConstructor
 @ToString(exclude = {"regex", "p"})
-@EqualsAndHashCode
 @RequiredArgsConstructor
 public class Window {
 
@@ -74,8 +73,43 @@ public class Window {
         return this;
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        Window window = (Window) o;
+
+        if (iri != null ? !iri.equals(window.iri) : window.iri != null) return false;
+        if (beta != null ? !beta.equals(window.beta) : window.beta != null) return false;
+        if (omega != null ? !omega.equals(window.omega) : window.omega != null) return false;
+        if (unit_omega != null ? !unit_omega.equals(window.unit_omega) : window.unit_omega != null) return false;
+        if (unit_beta != null ? !unit_beta.equals(window.unit_beta) : window.unit_beta != null) return false;
+        if (stream != null ? !stream.equals(window.stream) : window.stream != null) return false;
+        if (regex != null ? !regex.equals(window.regex) : window.regex != null) return false;
+        if (p != null ? !p.equals(window.p) : window.p != null) return false;
+        return type == window.type;
+
+    }
+
+    @Override
+    public int hashCode() {
+        int result = iri != null ? iri.hashCode() : 0;
+        result = 31 * result + (beta != null ? beta.hashCode() : 0);
+        result = 31 * result + (omega != null ? omega.hashCode() : 0);
+        result = 31 * result + (unit_omega != null ? unit_omega.hashCode() : 0);
+        result = 31 * result + (unit_beta != null ? unit_beta.hashCode() : 0);
+        result = 31 * result + (stream != null ? stream.hashCode() : 0);
+        result = 31 * result + (regex != null ? regex.hashCode() : 0);
+        result = 31 * result + (p != null ? p.hashCode() : 0);
+        result = 31 * result + (type != null ? type.hashCode() : 0);
+        return result;
+    }
+
+
     public enum WindowType {
         Logical, Physical;
     }
+
 
 }

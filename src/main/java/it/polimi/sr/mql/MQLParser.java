@@ -27,10 +27,23 @@ public class MQLParser extends CSPARQLLexer {
 
     public Rule Query() {
         return Sequence(push(new MQLQuery(getResolver())), WS(), Optional(Registration()), Prologue(), ZeroOrMore(CreateEventClause())
-                , FirstOf(MatchQuery(), SelectQuery(), ConstructQuery(), AskQuery(), DescribeQuery()), ValuesClause()
-                , EOI);
+                , EmitQuery(),  EOI);
     }
 
+    public Rule EmitQuery() {
+        return Sequence(
+                EmitClause(),
+                ZeroOrMore(MatchClause()),
+                ZeroOrMore(FirstOf(DatasetClause(), DatastreamClause())),
+                WhereClause(),
+                SolutionModifiers());
+    }
+
+    public Rule EmitClause() {
+        return Sequence(EMIT(), pushQuery(popQuery(0).setConstructQuery()),
+                FirstOf(Sequence(ASTERISK(), pushQuery(popQuery(0).setMQLQueryStar())),
+                        OneOrMore(Sequence(Var(), pushQuery(((MQLQuery) pop(1)).addEmitVar((Node) pop()))))));
+    }
 
     public Rule CreateEventClause() {
         return Sequence(CREATE(), EVENT(), Var(), OPEN_CURLY_BRACE(), EventDef()
@@ -46,7 +59,7 @@ public class MQLParser extends CSPARQLLexer {
     }
 
     public Rule IfClause() {
-        return Sequence(IF(), OPEN_CURLY_BRACE(), Optional(TriplesBlock(), push(new IFDecl(popElement()))), CLOSE_CURLY_BRACE());
+        return Sequence(IF(), OPEN_CURLY_BRACE(), TriplesBlock(), push(new IFDecl(popElement())), CLOSE_CURLY_BRACE());
     }
 
     public Rule EventDef() {
@@ -54,16 +67,10 @@ public class MQLParser extends CSPARQLLexer {
     }
 
 
-    public Rule EVENT() {
-        return StringIgnoreCaseWS("EVENT");
-    }
-
-    public Rule CREATE() {
-        return StringIgnoreCaseWS("CREATE");
-    }
 
 
-    public Rule MatchQuery() {
+
+    public Rule MatchClause() {
         return Sequence(MATCH(), PatternExpression());
     }
 
@@ -93,21 +100,6 @@ public class MQLParser extends CSPARQLLexer {
         ), Sequence(OPEN_BRACE(), PatternExpression(), CLOSE_BRACE()));
     }
 
-    public Rule AND_() {
-        return StringIgnoreCaseWS("AND");
-    }
-
-    public Rule OR_() {
-        return StringIgnoreCaseWS("OR");
-    }
-
-    public Rule FOLLOWED_BY() {
-        return FirstOf(StringWS("->"), StringIgnoreCaseWS("FOLLOWED_BY"), Sequence(StringIgnoreCaseWS("FOLLOWED"), BY()));
-    }
-
-    public Rule MATCH() {
-        return StringIgnoreCaseWS("MATCH");
-    }
 
 
     public Rule Prologue() {
