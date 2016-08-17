@@ -9,4 +9,4 @@ CREATE EVENT ?b  {
       subClassOf ( :detectedSmokeLevel min 0.6 )
 }
 
-MATCH every { ?s :p :o } or ( ?b -> ?c )
+MATCH every (?a or ?d) or ?b
