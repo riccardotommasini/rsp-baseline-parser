@@ -128,18 +128,33 @@ public class MQLParser extends MQLLexer {
     }
 
     public Rule FollowedByExpression() {
-        return Sequence(push(new PatternCollector()), OrExpression(), addExpression(),
-                ZeroOrMore(FirstOf(FOLLOWED_BY(), Sequence(NOT(), FOLLOWED_BY())), setOperator(), OrExpression(), addExpression()));
+        return Sequence(OrExpression(),
+                ZeroOrMore(FirstOf(FOLLOWED_BY(), Sequence(NOT(), FOLLOWED_BY())), pushOperator(), enclose(), OrExpression(), addExpression()));
     }
 
     public Rule OrExpression() {
         return Sequence(
-                push(new PatternCollector()),
-                AndExpression(), addExpression(), ZeroOrMore(OR_(), setOperator(), AndExpression(), addExpression()));
+                AndExpression(), ZeroOrMore(OR_(), pushOperator(), enclose(), AndExpression(), addExpression()));
     }
 
     public Rule AndExpression() {
-        return Sequence(push(new PatternCollector()), QualifyExpression(), addExpression(), ZeroOrMore(AND_(), setOperator(), QualifyExpression(), addExpression()));
+        return Sequence(QualifyExpression(), ZeroOrMore(AND_(),
+                pushOperator(), enclose(),
+                QualifyExpression(), addExpression()));
+    }
+
+    public boolean enclose() {
+
+        String operator = (String) pop();
+        PatternCollector inner = (PatternCollector) pop();
+
+        if (inner.getOperator() == null || !inner.getOperator().equals(operator)) {
+            PatternCollector outer = new PatternCollector();
+            outer.setOperator(operator);
+            outer.addPattern(inner);
+            return push(outer);
+        }
+        return push(inner);
     }
 
     public Rule QualifyExpression() {

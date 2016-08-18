@@ -279,4 +279,8 @@ public class MQLParserUtils extends BaseParser<Object> {
         return push(p);
     }
 
+    public boolean pushOperator() {
+        return push(trimMatch());
+    }
+
 }
