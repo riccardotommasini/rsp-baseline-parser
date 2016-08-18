@@ -70,7 +70,8 @@ public class MQLParser extends CSPARQLLexer {
 
 
     public Rule MatchClause() {
-        return Sequence(MATCH(), PatternExpression(), setMatchClause());
+        return Sequence(MATCH(), PatternExpression(),
+                setMatchClause());
     }
 
     public boolean setMatchClause() {
@@ -79,7 +80,8 @@ public class MQLParser extends CSPARQLLexer {
     }
 
     public Rule PatternExpression() {
-        return FollowedByExpression();
+        return Sequence(FollowedByExpression(),
+                Optional(Sequence(WITHIN(), LPAR(), TimeConstrain(), push(new PatternCollector(match(), (PatternCollector) pop())), RPAR())));
     }
 
     public Rule FollowedByExpression() {
@@ -119,7 +121,8 @@ public class MQLParser extends CSPARQLLexer {
     public Rule GuardPostFix() {
         return FirstOf(
                 Sequence(VarOrIRIref(), push(getQuery(-1).getIfClause((Node) peek())), push(new PatternCollector((IFDecl) pop(), (Node) pop()))),
-                Sequence(OPEN_BRACE(), PatternExpression(), CLOSE_BRACE(), push(new PatternCollector((PatternCollector) pop()))));
+                Sequence(LPAR(), PatternExpression(), RPAR(), push(new PatternCollector((PatternCollector) pop()))));
+
     }
 
 
@@ -188,7 +191,7 @@ public class MQLParser extends CSPARQLLexer {
                         OneOrMore(
                                 FirstOf(
                                         Sequence(Var(), pushQuery(((MQLQuery) pop(1)).addCSPARQLCResultVar((Node) pop()))),
-                                        Sequence(OPEN_BRACE(), Expression(), AS(), Var(), CLOSE_BRACE(),
+                                        Sequence(LPAR(), Expression(), AS(), Var(), RPAR(),
                                                 pushQuery(((MQLQuery) pop(2)).addCSPARQLCResultVar((Node) pop(), (Expr) pop())))))));
     }
 
@@ -298,14 +301,14 @@ public class MQLParser extends CSPARQLLexer {
     }
 
     public Rule InlineDataFull() {
-        return Sequence(OPEN_BRACE(), ZeroOrMore(Var(), emitDataBlockVariable((Var) pop())), CLOSE_BRACE(),
+        return Sequence(LPAR(), ZeroOrMore(Var(), emitDataBlockVariable((Var) pop())), RPAR(),
                 OPEN_CURLY_BRACE(),
-                ZeroOrMore(OPEN_BRACE(), startDataBlockValueRow(0),
+                ZeroOrMore(LPAR(), startDataBlockValueRow(0),
                         ZeroOrMore(DataBlockValue(),
                                 FirstOf(Sequence(Test(peek() instanceof Node)
                                         , emitDataBlockValue((Node) pop())),
                                         Sequence(TestNot(peek() instanceof Node)
-                                                , emitDataBlockValue(null)))), CLOSE_BRACE()),
+                                                , emitDataBlockValue(null)))), RPAR()),
                 CLOSE_CURLY_BRACE());
     }
 
@@ -343,10 +346,10 @@ public class MQLParser extends CSPARQLLexer {
                 Sequence(Var(), pushQuery(((MQLQuery) pop(1)).addCSPARQLGroupBy((Var) pop()))),
                 Sequence(BuiltInCall(), pushQuery(((MQLQuery) pop(1)).addCSPARQLGroupBy((Expr) pop()))),
                 Sequence(FunctionCall(), pushQuery(((MQLQuery) pop(1)).addCSPARQLGroupBy((Expr) pop()))),
-                Sequence(OPEN_BRACE(), Expression(),
+                Sequence(LPAR(), Expression(),
                         FirstOf(
-                                Sequence(AS(), Var(), CLOSE_BRACE(), pushQuery(((MQLQuery) pop(2)).addCSPARQLGroupBy((Var) pop(), (Expr) pop()))),
-                                Sequence(CLOSE_BRACE(), pushQuery(((MQLQuery) pop(1)).addCSPARQLGroupBy((Expr) pop()))))));
+                                Sequence(AS(), Var(), RPAR(), pushQuery(((MQLQuery) pop(2)).addCSPARQLGroupBy((Var) pop(), (Expr) pop()))),
+                                Sequence(RPAR(), pushQuery(((MQLQuery) pop(1)).addCSPARQLGroupBy((Expr) pop()))))));
 
     }
 
@@ -372,7 +375,7 @@ public class MQLParser extends CSPARQLLexer {
     }
 
     public Rule Bind() {
-        return Sequence(BIND(), OPEN_BRACE(), Expression(), AS(), Var(), CLOSE_BRACE(), push(new ElementBind((Var) pop(), (Expr) pop())));
+        return Sequence(BIND(), LPAR(), Expression(), AS(), Var(), RPAR(), push(new ElementBind((Var) pop(), (Expr) pop())));
     }
 
     public Rule MinusGraphPattern() {
@@ -425,7 +428,7 @@ public class MQLParser extends CSPARQLLexer {
 
     public Rule GroupContant() {
         return Sequence(GROUP_CONCAT(),
-                OPEN_BRACE(),
+                LPAR(),
                 FirstOf(
                         Sequence(DISTINCT(), push(new Boolean(true))),
                         push(new Boolean(false))),
@@ -436,7 +439,7 @@ public class MQLParser extends CSPARQLLexer {
                         String(),
                         push(AggregatorFactory.createGroupConcat((Boolean) pop(1),
                                 (Expr) pop(), trimMatch(), new ExprList()))
-                ), CLOSE_BRACE());
+                ), RPAR());
     }
 
     public Rule TriplesTemplate() {
@@ -529,12 +532,12 @@ public class MQLParser extends CSPARQLLexer {
 
     public Rule GraphTerm() {
         return FirstOf(IriRef(), RdfLiteral(), NumericLiteral(),
-                BooleanLiteral(), BlankNode(), Sequence(OPEN_BRACE(),
-                        CLOSE_BRACE()));
+                BooleanLiteral(), BlankNode(), Sequence(LPAR(),
+                        RPAR()));
     }
 
     public Rule ExpressionList() {
-        return FirstOf(Sequence(NIL2(), push(new ExprList())), Sequence(OPEN_BRACE(), Expression(), push(new ExprList((Expr) pop())), ZeroOrMore(COMMA(), Expression(), addExprToExprList()), CLOSE_BRACE()));
+        return FirstOf(Sequence(NIL2(), push(new ExprList())), Sequence(LPAR(), Expression(), push(new ExprList((Expr) pop())), ZeroOrMore(COMMA(), Expression(), addExprToExprList()), RPAR()));
     }
 
     public Rule Expression() {
@@ -610,7 +613,7 @@ public class MQLParser extends CSPARQLLexer {
     }
 
     public Rule BrackettedExpression() {
-        return Sequence(OPEN_BRACE(), Expression(), CLOSE_BRACE());
+        return Sequence(LPAR(), Expression(), RPAR());
     }
 
     public Rule BuiltInCall() {
@@ -624,41 +627,41 @@ public class MQLParser extends CSPARQLLexer {
         return FirstOf(
                 //TODO verify is the are all
 
-                Sequence(STR(), OPEN_BRACE(), Expression(), push(new E_Str((Expr) pop())), CLOSE_BRACE()),
-                Sequence(LANG(), OPEN_BRACE(), Expression(), push(new E_Lang((Expr) pop())), CLOSE_BRACE()),
-                Sequence(LANGMATCHES(), OPEN_BRACE(), Expression(), COMMA(),
-                        Expression(), swap(), push(new E_LangMatches((Expr) pop(), (Expr) pop())), CLOSE_BRACE()),
-                Sequence(DATATYPE(), OPEN_BRACE(), Expression(), push(new E_Datatype((Expr) pop())), CLOSE_BRACE()),
-                Sequence(BOUND(), OPEN_BRACE(), Var(), push(new E_Bound(new ExprVar((Var) pop()))), CLOSE_BRACE()),
-                Sequence(BNODE(), OPEN_BRACE(), Expression(), push(new E_BNode((Expr) pop())), CLOSE_BRACE()),
+                Sequence(STR(), LPAR(), Expression(), push(new E_Str((Expr) pop())), RPAR()),
+                Sequence(LANG(), LPAR(), Expression(), push(new E_Lang((Expr) pop())), RPAR()),
+                Sequence(LANGMATCHES(), LPAR(), Expression(), COMMA(),
+                        Expression(), swap(), push(new E_LangMatches((Expr) pop(), (Expr) pop())), RPAR()),
+                Sequence(DATATYPE(), LPAR(), Expression(), push(new E_Datatype((Expr) pop())), RPAR()),
+                Sequence(BOUND(), LPAR(), Var(), push(new E_Bound(new ExprVar((Var) pop()))), RPAR()),
+                Sequence(BNODE(), LPAR(), Expression(), push(new E_BNode((Expr) pop())), RPAR()),
                 Sequence(NIL(), push(new E_BNode())),
                 Sequence(RAND(), push(new E_Random())),
-                Sequence(AVG(), OPEN_BRACE(), Expression(), push(new E_NumAbs((Expr) pop())), CLOSE_BRACE()),
-                Sequence(CEIL(), OPEN_BRACE(), Expression(), push(new E_NumCeiling((Expr) pop())), CLOSE_BRACE()),
-                Sequence(FLOOR(), OPEN_BRACE(), Expression(), push(new E_NumFloor((Expr) pop())), CLOSE_BRACE()),
-                Sequence(ROUND(), OPEN_BRACE(), Expression(), push(new E_NumRound((Expr) pop())), CLOSE_BRACE()),
-                Sequence(CONCAT(), OPEN_BRACE(), ExpressionList(), push(new E_StrConcat((ExprList) pop())), CLOSE_BRACE()),
+                Sequence(AVG(), LPAR(), Expression(), push(new E_NumAbs((Expr) pop())), RPAR()),
+                Sequence(CEIL(), LPAR(), Expression(), push(new E_NumCeiling((Expr) pop())), RPAR()),
+                Sequence(FLOOR(), LPAR(), Expression(), push(new E_NumFloor((Expr) pop())), RPAR()),
+                Sequence(ROUND(), LPAR(), Expression(), push(new E_NumRound((Expr) pop())), RPAR()),
+                Sequence(CONCAT(), LPAR(), ExpressionList(), push(new E_StrConcat((ExprList) pop())), RPAR()),
 
-                Sequence(STRLEN(), OPEN_BRACE(), Expression(), push(new E_StrLength((Expr) pop())), CLOSE_BRACE()),
-                Sequence(UCASE(), OPEN_BRACE(), Expression(), push(new E_StrUpperCase((Expr) pop())), CLOSE_BRACE()),
-                Sequence(LCASE(), OPEN_BRACE(), Expression(), push(new E_StrLowerCase((Expr) pop())), CLOSE_BRACE()),
-                Sequence(ENCODE_FOR_URI(), OPEN_BRACE(), Expression(), push(new E_StrEncodeForURI((Expr) pop())), CLOSE_BRACE()),
-                Sequence(CONTAINS(), OPEN_BRACE(), Expression(), COMMA(), Expression(), swap(), push(new E_StrContains((Expr) pop(), (Expr) pop())), CLOSE_BRACE()),
-                Sequence(FirstOf(SAME_TERM(), SAMETERM()), OPEN_BRACE(), Expression(), COMMA(), Expression(), swap(), push(new E_SameTerm((Expr) pop(), (Expr) pop())), CLOSE_BRACE()),
-                Sequence(STRDT(), OPEN_BRACE(), Expression(), COMMA(), Expression(), swap(), push(new E_StrDatatype((Expr) pop(), (Expr) pop())), CLOSE_BRACE()),
-                Sequence(STRLANG(), OPEN_BRACE(), Expression(), COMMA(), Expression(), swap(), push(new E_StrLang((Expr) pop(), (Expr) pop())), CLOSE_BRACE()),
+                Sequence(STRLEN(), LPAR(), Expression(), push(new E_StrLength((Expr) pop())), RPAR()),
+                Sequence(UCASE(), LPAR(), Expression(), push(new E_StrUpperCase((Expr) pop())), RPAR()),
+                Sequence(LCASE(), LPAR(), Expression(), push(new E_StrLowerCase((Expr) pop())), RPAR()),
+                Sequence(ENCODE_FOR_URI(), LPAR(), Expression(), push(new E_StrEncodeForURI((Expr) pop())), RPAR()),
+                Sequence(CONTAINS(), LPAR(), Expression(), COMMA(), Expression(), swap(), push(new E_StrContains((Expr) pop(), (Expr) pop())), RPAR()),
+                Sequence(FirstOf(SAME_TERM(), SAMETERM()), LPAR(), Expression(), COMMA(), Expression(), swap(), push(new E_SameTerm((Expr) pop(), (Expr) pop())), RPAR()),
+                Sequence(STRDT(), LPAR(), Expression(), COMMA(), Expression(), swap(), push(new E_StrDatatype((Expr) pop(), (Expr) pop())), RPAR()),
+                Sequence(STRLANG(), LPAR(), Expression(), COMMA(), Expression(), swap(), push(new E_StrLang((Expr) pop(), (Expr) pop())), RPAR()),
 
-                Sequence(IF(), OPEN_BRACE(), Expression(), COMMA(), Expression(), COMMA(), Expression(), swap3(), push(new E_Conditional((Expr) pop(), (Expr) pop(), (Expr) pop())), CLOSE_BRACE()),
+                Sequence(IF(), LPAR(), Expression(), COMMA(), Expression(), COMMA(), Expression(), swap3(), push(new E_Conditional((Expr) pop(), (Expr) pop(), (Expr) pop())), RPAR()),
 
 
-                Sequence(SUBSTR(), OPEN_BRACE(), Expression(), COMMA(), Expression(), COMMA(), Expression(), swap3(), push(new E_StrSubstring((Expr) pop(), (Expr) pop(), (Expr) pop())), CLOSE_BRACE()),
-                Sequence(REPLACE(), OPEN_BRACE(), Expression(), COMMA(), Expression(), COMMA(), Expression(), COMMA(), Expression(), swap4(), push(new E_StrReplace((Expr) pop(), (Expr) pop(), (Expr) pop(), (Expr) pop())), CLOSE_BRACE()), //TODO check swap4
+                Sequence(SUBSTR(), LPAR(), Expression(), COMMA(), Expression(), COMMA(), Expression(), swap3(), push(new E_StrSubstring((Expr) pop(), (Expr) pop(), (Expr) pop())), RPAR()),
+                Sequence(REPLACE(), LPAR(), Expression(), COMMA(), Expression(), COMMA(), Expression(), COMMA(), Expression(), swap4(), push(new E_StrReplace((Expr) pop(), (Expr) pop(), (Expr) pop(), (Expr) pop())), RPAR()), //TODO check swap4
 
-                Sequence(ISIRI(), OPEN_BRACE(), Expression(), push(new E_IsIRI((Expr) pop())), CLOSE_BRACE()),
-                Sequence(ISURI(), OPEN_BRACE(), Expression(), push(new E_IsURI((Expr) pop())), CLOSE_BRACE()),
-                Sequence(ISBLANK(), OPEN_BRACE(), Expression(), push(new E_IsBlank((Expr) pop())), CLOSE_BRACE()),
-                Sequence(ISLITERAL(), OPEN_BRACE(), Expression(), push(new E_IsLiteral((Expr) pop())), CLOSE_BRACE()),
-                Sequence(IS_NUMERIC(), OPEN_BRACE(), Expression(), push(new E_IsNumeric((Expr) pop())), CLOSE_BRACE()),
+                Sequence(ISIRI(), LPAR(), Expression(), push(new E_IsIRI((Expr) pop())), RPAR()),
+                Sequence(ISURI(), LPAR(), Expression(), push(new E_IsURI((Expr) pop())), RPAR()),
+                Sequence(ISBLANK(), LPAR(), Expression(), push(new E_IsBlank((Expr) pop())), RPAR()),
+                Sequence(ISLITERAL(), LPAR(), Expression(), push(new E_IsLiteral((Expr) pop())), RPAR()),
+                Sequence(IS_NUMERIC(), LPAR(), Expression(), push(new E_IsNumeric((Expr) pop())), RPAR()),
                 Sequence(EXISTS(), GroupGraphPattern(), push(new E_Exists((Element) pop()))),
                 Sequence(NOT(), EXISTS(), GroupGraphPattern(), push(new E_NotExists((Element) pop()))),
 
@@ -678,52 +681,52 @@ public class MQLParser extends CSPARQLLexer {
     }
 
     public Rule Sample() {
-        return Sequence(SAMPLE(), OPEN_BRACE(), FirstOf(
+        return Sequence(SAMPLE(), LPAR(), FirstOf(
                 Sequence(DISTINCT(), push(new Boolean(true))),
                 push(new Boolean(false))),
                 Sequence(Expression(), swap(),
                         push(AggregatorFactory.createSample((Boolean) pop(), (Expr) pop()))),
-                CLOSE_BRACE());
+                RPAR());
     }
 
     public Rule Avg() {
-        return Sequence(AVG(), OPEN_BRACE(), FirstOf(
+        return Sequence(AVG(), LPAR(), FirstOf(
                 Sequence(DISTINCT(), push(new Boolean(true))),
                 push(new Boolean(false))),
                 Sequence(Expression(), swap(),
                         push(AggregatorFactory.createAvg((Boolean) pop(), (Expr) pop()))),
-                CLOSE_BRACE());
+                RPAR());
     }
 
     public Rule Max() {
-        return Sequence(MAX(), OPEN_BRACE(), FirstOf(
+        return Sequence(MAX(), LPAR(), FirstOf(
                 Sequence(DISTINCT(), push(new Boolean(true))),
                 push(new Boolean(false))),
                 Sequence(Expression(), swap(),
                         push(AggregatorFactory.createMax((Boolean) pop(), (Expr) pop()))),
-                CLOSE_BRACE());
+                RPAR());
     }
 
     public Rule Min() {
-        return Sequence(MIN(), OPEN_BRACE(), FirstOf(
+        return Sequence(MIN(), LPAR(), FirstOf(
                 Sequence(DISTINCT(), push(new Boolean(true))),
                 push(new Boolean(false))),
                 Sequence(Expression(), swap(),
                         push(AggregatorFactory.createMin((Boolean) pop(), (Expr) pop()))),
-                CLOSE_BRACE());
+                RPAR());
     }
 
     public Rule Sum() {
-        return Sequence(SUM(), OPEN_BRACE(), FirstOf(
+        return Sequence(SUM(), LPAR(), FirstOf(
                 Sequence(DISTINCT(), push(new Boolean(true))),
                 push(new Boolean(false))),
                 Sequence(Expression(), swap(),
                         push(AggregatorFactory.createSum((Boolean) pop(), (Expr) pop()))),
-                CLOSE_BRACE());
+                RPAR());
     }
 
     public Rule Count() {
-        return Sequence(COUNT(), OPEN_BRACE(), FirstOf(
+        return Sequence(COUNT(), LPAR(), FirstOf(
                 Sequence(DISTINCT(), push(new Boolean(true))),
                 push(new Boolean(false))),
                 FirstOf(
@@ -731,16 +734,16 @@ public class MQLParser extends CSPARQLLexer {
                         Sequence(Expression(), swap(),
                                 push(AggregatorFactory.createCountExpr((Boolean) pop(), (Expr) pop())))
                 ),
-                CLOSE_BRACE());
+                RPAR());
     }
 
     public Rule RegexExpression() {
-        return Sequence(REGEX(), OPEN_BRACE(), Expression(), COMMA(), Expression(),
+        return Sequence(REGEX(), LPAR(), Expression(), COMMA(), Expression(),
                 FirstOf(
                         Sequence(swap(), push(new E_Regex((Expr) pop(), (Expr) pop(), null))),
                         Optional(Sequence(COMMA(), Expression(), swap3(), push(new E_Regex((Expr) pop(), (Expr) pop(), (Expr) pop()))))
                 ),
-                CLOSE_BRACE());
+                RPAR());
     }
 
     public Rule IriRefOrFunction() {
@@ -759,9 +762,9 @@ public class MQLParser extends CSPARQLLexer {
 
     public Rule ArgList() {
         return Sequence(push(new Args()),
-                FirstOf(Sequence(OPEN_BRACE(), CLOSE_BRACE()),
-                        Sequence(OPEN_BRACE(), Optional(DISTINCT(), ((Args) pop()).distinct = true), Expression(), addArg(), ZeroOrMore(Sequence(COMMA(),
-                                Expression(), addArg())), CLOSE_BRACE())));
+                FirstOf(Sequence(LPAR(), RPAR()),
+                        Sequence(LPAR(), Optional(DISTINCT(), ((Args) pop()).distinct = true), Expression(), addArg(), ZeroOrMore(Sequence(COMMA(),
+                                Expression(), addArg())), RPAR())));
     }
 
     public Rule RdfLiteral() {

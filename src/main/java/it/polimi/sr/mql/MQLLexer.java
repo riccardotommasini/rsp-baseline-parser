@@ -140,7 +140,7 @@ public class MQLLexer extends MQLQueryParser {
     }
 
     public Rule NIL2() {
-        return Sequence(OPEN_BRACE(), WS(), CLOSE_BRACE());
+        return Sequence(LPAR(), WS(), RPAR());
     }
 
     public Rule WS() {
@@ -496,11 +496,11 @@ public class MQLLexer extends MQLQueryParser {
         return StringWS("||");
     }
 
-    public Rule OPEN_BRACE() {
+    public Rule LPAR() {
         return ChWS('(');
     }
 
-    public Rule CLOSE_BRACE() {
+    public Rule RPAR() {
         return ChWS(')');
     }
 
@@ -692,6 +692,10 @@ public class MQLLexer extends MQLQueryParser {
 
     public Rule EMIT() {
         return StringIgnoreCaseWS("EMIT");
+    }
+
+    public Rule WITHIN() {
+        return StringIgnoreCaseWS("WITHIN");
     }
 
 

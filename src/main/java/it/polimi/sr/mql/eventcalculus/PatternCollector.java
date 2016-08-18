@@ -21,7 +21,7 @@ import java.util.Set;
 public class PatternCollector {
 
     private String operator;
-    private Node var;
+    private String var;
     private List<PatternCollector> patterns;
     private IFDecl ifdecl;
     private boolean bracketed = false;
@@ -29,6 +29,17 @@ public class PatternCollector {
     public PatternCollector(PatternCollector pop) {
         addPattern(pop);
         bracketed = true;
+    }
+
+
+    public PatternCollector(String match, PatternCollector pop) {
+        operator = "WITHIN";
+        PatternCollector var = new PatternCollector();
+        var.setVar(match);
+        if (patterns == null)
+            patterns = new ArrayList<PatternCollector>();
+        patterns.add(pop);
+        patterns.add(var);
 
     }
 
@@ -37,7 +48,7 @@ public class PatternCollector {
     }
 
     public PatternCollector(IFDecl ifdecl, Node var) {
-        this.var = var;
+        this.var = var.getName();
         this.ifdecl = ifdecl;
     }
 
@@ -51,11 +62,12 @@ public class PatternCollector {
     public String toString() {
         String s = "";
 
+
         if (isVar()) {
-            return var.getName();
+            return var;
         }
 
-        if (operator != null && ("every".equals(operator.toLowerCase()) || "not".equals(operator.toLowerCase()))) {
+        if (operator != null && ("every".equals(operator.toLowerCase()) || "not".equals(operator.toLowerCase()))){
             return operator + " (" + patterns.get(0) + ")";
         }
 
