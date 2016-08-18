@@ -1,6 +1,8 @@
 package it.polimi.sr.mql.events.calculus;
 
+import com.espertech.esper.client.soda.*;
 import org.apache.jena.sparql.core.Var;
+
 import java.util.Set;
 
 /**
@@ -30,4 +32,11 @@ public class MatchClause {
         return expr.getJoinVariables();
     }
 
+    public EPStatementObjectModel toEpl() {
+        EPStatementObjectModel model = new EPStatementObjectModel();
+        model.setSelectClause(SelectClause.createWildcard());
+        PatternExpr pattern = expr.toEPL();
+        model.setFromClause(FromClause.create(PatternStream.create(pattern)));
+        return model;
+    }
 }
