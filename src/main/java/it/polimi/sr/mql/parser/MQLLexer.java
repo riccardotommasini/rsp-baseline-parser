@@ -1,4 +1,4 @@
-package it.polimi.sr.mql;/*
+package it.polimi.sr.mql.parser;/*
  * Copyright (c) 2009 Ken Wenzel
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -29,7 +29,7 @@ import org.parboiled.annotations.BuildParseTree;
  * @author Ken Wenzel, adapted by Mathias Doenitz
  */
 @BuildParseTree
-public class MQLLexer extends MQLQueryParser {
+public class MQLLexer extends MQLParserUtils {
 
     public Rule HAVING() {
         return StringIgnoreCaseWS("HAVING");

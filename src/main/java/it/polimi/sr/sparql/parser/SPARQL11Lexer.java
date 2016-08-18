@@ -1,4 +1,4 @@
-package it.polimi.sr.sparql;/*
+package it.polimi.sr.sparql.parser;/*
  * Copyright (c) 2009 Ken Wenzel
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -20,7 +20,6 @@ package it.polimi.sr.sparql;/*
  * THE SOFTWARE.
  */
 
-import it.polimi.sr.sparql.QueryParser;
 import org.parboiled.Rule;
 import org.parboiled.annotations.BuildParseTree;
 
@@ -31,7 +30,7 @@ import org.parboiled.annotations.BuildParseTree;
  */
 @SuppressWarnings({"InfiniteRecursion"})
 @BuildParseTree
-public class SPARQL11Lexer extends QueryParser {
+public class SPARQL11Lexer extends SPARQLParserUtils {
 
     public Rule HAVING() {
         return StringIgnoreCaseWS("HAVING");

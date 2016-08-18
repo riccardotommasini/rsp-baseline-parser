@@ -1,4 +1,4 @@
-package it.polimi.sr.mql;
+package it.polimi.sr.mql.events.declaration;
 
 import lombok.Data;
 import org.apache.jena.graph.Node;

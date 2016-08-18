@@ -1,4 +1,4 @@
-package it.polimi.sr.csparql;
+package it.polimi.sr.mql.streams;
 
 import lombok.Getter;
 import org.apache.jena.graph.Node;

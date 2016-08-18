@@ -1,6 +1,10 @@
-package it.polimi.sr.sparql;
+package it.polimi.sr.sparql.parser;
 
 
+import it.polimi.sr.sparql.parsing.Function;
+import it.polimi.sr.sparql.parsing.Prefix;
+import it.polimi.sr.sparql.Query;
+import it.polimi.sr.sparql.parsing.ValuesClauseBuilder;
 import org.apache.jena.atlas.lib.EscapeStr;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.graph.Node;
