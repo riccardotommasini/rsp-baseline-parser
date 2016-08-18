@@ -2,6 +2,7 @@ package it.polimi.sr.mql;
 
 import it.polimi.sr.csparql.Register;
 import it.polimi.sr.csparql.Window;
+import it.polimi.sr.mql.eventcalculus.MatchClause;
 import it.polimi.sr.sparql.Prefix;
 import lombok.Data;
 import org.apache.jena.graph.Node;
@@ -38,6 +39,7 @@ public class MQLQuery extends Query {
     private boolean MQLQyeryStar;
     protected VarExprList MQLprojectVars = new VarExprList();
     private boolean MQLresultVarsSet;
+    private List<MatchClause> matchclauses;
 
     public MQLQuery(IRIResolver resolver) {
         setBaseURI(resolver);
@@ -95,6 +97,8 @@ public class MQLQuery extends Query {
     public MQLQuery addElement(ElementGroup sub) {
         setQueryPattern(sub);
 
+        //TODO if emit query only
+        //TODO UNION?
         TripleCollectorBGP collector = new TripleCollectorBGP();
         List<Element> elements = sub.getElements();
         for (Element element : elements) {
@@ -298,4 +302,14 @@ public class MQLQuery extends Query {
     }
 
 
+    public void addMatchClause(MatchClause matchClause) {
+        if (matchclauses == null)
+            matchclauses = new ArrayList<MatchClause>();
+        this.matchclauses.add(matchClause);
+    }
+
+    public IFDecl getIfClause(Node peek) {
+        EventDecl eventDecl = eventDeclarations.get(peek.getName());
+        return eventDecl != null ? eventDecl.getIfdecl() : null;
+    }
 }

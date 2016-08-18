@@ -3,6 +3,8 @@ package it.polimi.sr.mql;
 import it.polimi.sr.csparql.CSPARQLLexer;
 import it.polimi.sr.csparql.Register;
 import it.polimi.sr.csparql.Window;
+import it.polimi.sr.mql.eventcalculus.MatchClause;
+import it.polimi.sr.mql.eventcalculus.PatternCollector;
 import it.polimi.sr.sparql.Function;
 import it.polimi.sr.sparql.Prefix;
 import it.polimi.sr.sparql.ValuesClauseBuilder;
@@ -27,7 +29,7 @@ public class MQLParser extends CSPARQLLexer {
 
     public Rule Query() {
         return Sequence(push(new MQLQuery(getResolver())), WS(), Optional(Registration()), Prologue(), ZeroOrMore(CreateEventClause())
-                , EmitQuery(),  EOI);
+                , EmitQuery(), EOI);
     }
 
     public Rule EmitQuery() {
@@ -67,11 +69,13 @@ public class MQLParser extends CSPARQLLexer {
     }
 
 
-
-
-
     public Rule MatchClause() {
-        return Sequence(MATCH(), PatternExpression());
+        return Sequence(MATCH(), PatternExpression(), setMatchClause());
+    }
+
+    public boolean setMatchClause() {
+        getQuery(-1).addMatchClause(new MatchClause((PatternCollector) pop()));
+        return true;
     }
 
     public Rule PatternExpression() {
@@ -79,27 +83,44 @@ public class MQLParser extends CSPARQLLexer {
     }
 
     public Rule FollowedByExpression() {
-        return Sequence(OrExpression(), ZeroOrMore(FirstOf(FOLLOWED_BY(), Sequence(NOT(), FOLLOWED_BY())), OrExpression()));
+        return Sequence(push(new PatternCollector()), OrExpression(), addExpression(),
+                ZeroOrMore(FirstOf(FOLLOWED_BY(), Sequence(NOT(), FOLLOWED_BY())), setOperator(), OrExpression(), addExpression()));
     }
 
     public Rule OrExpression() {
-        return Sequence(AndExpression(), ZeroOrMore(OR_(), AndExpression()));
+        return Sequence(
+                push(new PatternCollector()),
+                AndExpression(), addExpression(), ZeroOrMore(OR_(), setOperator(), AndExpression(), addExpression()));
     }
 
+    public boolean addExpression() {
+        PatternCollector inner = (PatternCollector) pop();
+        PatternCollector outer = (PatternCollector) pop();
+        outer.addPattern(inner);
+        return push(outer);
+    }
+
+    public boolean setOperator() {
+        PatternCollector p = (PatternCollector) pop();
+        if (p.getOperator() == null)
+            p.setOperator(trimMatch());
+        return push(p);
+    }
+
+
     public Rule AndExpression() {
-        return Sequence(QualifyExpression(), ZeroOrMore(AND_(), QualifyExpression()));
+        return Sequence(push(new PatternCollector()), QualifyExpression(), addExpression(), ZeroOrMore(AND_(), setOperator(), QualifyExpression(), addExpression()));
     }
 
     public Rule QualifyExpression() {
-        return Sequence(Optional(FirstOf(EVERY(), NOT())), GuardPostFix());
+        return Sequence(push(new PatternCollector()), Optional(FirstOf(EVERY(), NOT())), setOperator(), GuardPostFix(), addExpression());
     }
 
     public Rule GuardPostFix() {
-        return FirstOf(FirstOf(Sequence(VarOrIRIref(), drop()),
-                Sequence(OPEN_CURLY_BRACE(), TriplesBlock(), drop(), CLOSE_CURLY_BRACE())
-        ), Sequence(OPEN_BRACE(), PatternExpression(), CLOSE_BRACE()));
+        return FirstOf(
+                Sequence(VarOrIRIref(), push(getQuery(-1).getIfClause((Node) peek())), push(new PatternCollector((IFDecl) pop(), (Node) pop()))),
+                Sequence(OPEN_BRACE(), PatternExpression(), CLOSE_BRACE(), push(new PatternCollector((PatternCollector) pop()))));
     }
-
 
 
     public Rule Prologue() {
