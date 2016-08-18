@@ -6,7 +6,7 @@ import it.polimi.sr.mql.events.declaration.EventDecl;
 import it.polimi.sr.mql.events.declaration.IFDecl;
 import it.polimi.sr.mql.streams.Register;
 import it.polimi.sr.mql.streams.Window;
-import it.polimi.sr.sparql.parsing.Function;
+import gitit.polimi.sr.sparql.parsing.Function;
 import it.polimi.sr.sparql.parsing.Prefix;
 import it.polimi.sr.sparql.parsing.ValuesClauseBuilder;
 import org.apache.jena.atlas.lib.EscapeStr;
