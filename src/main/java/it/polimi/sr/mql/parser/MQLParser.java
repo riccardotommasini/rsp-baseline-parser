@@ -43,7 +43,7 @@ public class MQLParser extends MQLLexer {
     }
 
     public Rule EmitClause() {
-        return Sequence(EMIT(), pushQuery(popQuery(0).setConstructQuery()),
+        return Sequence(EMIT(), pushQuery(popQuery(0).setEmitQuery()),
                 FirstOf(Sequence(ASTERISK(), pushQuery(popQuery(0).setMQLQueryStar())),
                         OneOrMore(Sequence(Var(), pushQuery(((MQLQuery) pop(1)).addEmitVar((Node) pop()))))));
     }
@@ -118,8 +118,7 @@ public class MQLParser extends MQLLexer {
     }
 
     public Rule MatchClause() {
-        return Sequence(MATCH(), PatternExpression(),
-                setMatchClause());
+        return Sequence(MATCH(), PatternExpression(), setMatchClause());
     }
 
     public Rule PatternExpression() {
@@ -129,42 +128,41 @@ public class MQLParser extends MQLLexer {
 
     public Rule FollowedByExpression() {
         return Sequence(OrExpression(),
-                ZeroOrMore(FirstOf(FOLLOWED_BY(), Sequence(NOT(), FOLLOWED_BY())), pushOperator(), enclose(), OrExpression(), addExpression()));
+                ZeroOrMore(FirstOf(FOLLOWED_BY(), Sequence(NOT(), FOLLOWED_BY())), enclose(trimMatch()), OrExpression(), addExpression()));
     }
 
     public Rule OrExpression() {
         return Sequence(
-                AndExpression(), ZeroOrMore(OR_(), pushOperator(), enclose(), AndExpression(), addExpression()));
+                AndExpression(), ZeroOrMore(OR_(), enclose(trimMatch()), AndExpression(), addExpression()));
     }
 
     public Rule AndExpression() {
-        return Sequence(QualifyExpression(), ZeroOrMore(AND_(),
-                pushOperator(), enclose(),
+        return Sequence(QualifyExpression(), ZeroOrMore(AND_(), enclose(trimMatch()),
                 QualifyExpression(), addExpression()));
     }
 
-    public boolean enclose() {
-
-        String operator = (String) pop();
+    public boolean enclose(String operator) {
+        System.out.println(operator);
         PatternCollector inner = (PatternCollector) pop();
 
-        if (inner.getOperator() == null || !inner.getOperator().equals(operator)) {
-            PatternCollector outer = new PatternCollector();
+        if (inner.isBracketed() || inner.getOperator() == null || !operator.equals(inner.getOperator())) {
+            PatternCollector outer = new PatternCollector(operator);
             outer.setOperator(operator);
             outer.addPattern(inner);
             return push(outer);
         }
         return push(inner);
+
     }
 
     public Rule QualifyExpression() {
-        return Sequence(push(new PatternCollector()), Optional(FirstOf(EVERY(), NOT())), setOperator(), GuardPostFix(), addExpression());
+        return FirstOf(Sequence(FirstOf(EVERY(), NOT()), push(new PatternCollector(trimMatch())), GuardPostFix(), addExpression()),
+                GuardPostFix());
     }
 
     public Rule GuardPostFix() {
-        return FirstOf(
-                Sequence(VarOrIRIref(), push(getQuery(-1).getIfClause((Node) peek())), push(new PatternCollector((IFDecl) pop(), (Node) pop()))),
-                Sequence(LPAR(), PatternExpression(), RPAR(), push(new PatternCollector((PatternCollector) pop()))));
+        return FirstOf(Sequence(LPAR(), PatternExpression(), RPAR(), push(new PatternCollector((PatternCollector) pop()))),
+                Sequence(VarOrIRIref(), push(getQuery(-1).getIfClause((Node) peek())), push(new PatternCollector((IFDecl) pop(), (Node) pop()))));
 
     }
 

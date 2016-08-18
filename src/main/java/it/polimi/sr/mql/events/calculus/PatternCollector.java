@@ -51,6 +51,10 @@ public class PatternCollector {
 
     }
 
+    public PatternCollector(String s) {
+        this.operator = s;
+    }
+
     public boolean isVar() {
         return var != null;
     }
@@ -167,7 +171,7 @@ public class PatternCollector {
             return Patterns.filter(var, name = var + 0);
         }
 
-        if ((operator == null || operator.isEmpty()) && patterns != null && patterns.size() == 1) {
+        if (bracketed || (operator == null || operator.isEmpty()) && patterns != null && patterns.size() == 1) {
             return patterns.get(0).toEPL(ifdecls);
         }
 
