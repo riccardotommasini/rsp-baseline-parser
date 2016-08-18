@@ -1,7 +1,8 @@
 package it.polimi.sr.sparql;
 
-import it.polimi.sr.mql.MQLParser;
 import it.polimi.sr.mql.MQLQuery;
+import it.polimi.sr.mql.parser.MQLParser;
+
 import org.apache.commons.io.Charsets;
 import org.apache.commons.io.IOUtils;
 import org.apache.jena.query.QueryFactory;
