@@ -1,6 +1,6 @@
-package it.polimi.sr.mql.eventcalculus;
+package it.polimi.sr.mql.events.calculus;
 
-import it.polimi.sr.mql.IFDecl;
+import it.polimi.sr.mql.events.declaration.IFDecl;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;

@@ -1,5 +1,6 @@
 package it.polimi.sr.sparql;
 
+import it.polimi.sr.sparql.parsing.Prefix;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Node_URI;
 import org.apache.jena.graph.Triple;

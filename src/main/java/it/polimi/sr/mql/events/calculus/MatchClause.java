@@ -1,7 +1,6 @@
-package it.polimi.sr.mql.eventcalculus;
+package it.polimi.sr.mql.events.calculus;
 
 import org.apache.jena.sparql.core.Var;
-
 import java.util.Set;
 
 /**

@@ -1,9 +1,11 @@
 package it.polimi.sr.mql;
 
-import it.polimi.sr.csparql.Register;
-import it.polimi.sr.csparql.Window;
-import it.polimi.sr.mql.eventcalculus.MatchClause;
-import it.polimi.sr.sparql.Prefix;
+import it.polimi.sr.mql.events.calculus.MatchClause;
+import it.polimi.sr.mql.events.declaration.EventDecl;
+import it.polimi.sr.mql.events.declaration.IFDecl;
+import it.polimi.sr.mql.streams.Register;
+import it.polimi.sr.mql.streams.Window;
+import it.polimi.sr.sparql.parsing.Prefix;
 import lombok.Data;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Node_URI;

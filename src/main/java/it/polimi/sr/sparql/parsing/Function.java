@@ -1,4 +1,4 @@
-package it.polimi.sr.sparql;
+package it.polimi.sr.sparql.parsing;
 
 import org.apache.jena.graph.Node_URI;
 import org.apache.jena.sparql.expr.E_Function;

@@ -1,3 +1,5 @@
+package it.polimi.sr.run;
+
 import it.polimi.sr.mql.MQLQuery;
 import org.apache.commons.io.FileUtils;
 import org.apache.jena.query.QueryFactory;
@@ -14,7 +16,7 @@ import org.parboiled.Parboiled;
 import org.parboiled.errors.ParseError;
 import org.parboiled.parserunners.ReportingParseRunner;
 import org.parboiled.support.ParsingResult;
-import it.polimi.sr.mql.MQLParser;
+import it.polimi.sr.mql.parser.MQLParser;
 
 import java.io.File;
 import java.io.IOException;
@@ -120,6 +122,7 @@ public class SPARQL11Main {
             System.out.println("EXPR " + e.toString());
         }
         System.out.println("---");
+
 
 
     }

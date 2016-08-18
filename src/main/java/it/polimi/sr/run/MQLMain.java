@@ -1,6 +1,10 @@
-import it.polimi.sr.csparql.Window;
+package it.polimi.sr.run;
+
+import it.polimi.sr.mql.streams.Window;
+import it.polimi.sr.mql.events.declaration.EventDecl;
+import it.polimi.sr.mql.parser.MQLParser;
 import it.polimi.sr.mql.MQLQuery;
-import it.polimi.sr.mql.MQLParser;
+import it.polimi.sr.mql.events.calculus.MatchClause;
 import org.apache.commons.io.FileUtils;
 import org.apache.jena.graph.Node;
 import org.apache.jena.query.SortCondition;
@@ -18,10 +22,12 @@ import org.parboiled.support.ParsingResult;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
-public class CSPARQLMain {
+public class MQLMain {
 
     public static void main(String[] args) throws IOException {
 
@@ -123,7 +129,20 @@ public class CSPARQLMain {
 
         if (q.getEventDeclarations() != null) {
             for (String k : q.getEventDeclarations().keySet()) {
-                System.out.println(q.getEventDeclarations().get(k));
+                EventDecl x = q.getEventDeclarations().get(k);
+                System.out.println(x);
+                if (x.getIfdecl() != null) {
+                    Set<Var> seleect = new HashSet<Var>();
+                    Var v = Var.alloc("o");
+                    seleect.add(v);
+                    System.out.println(x.getIfdecl().toSPARQL(seleect).toString());
+                }
+            }
+        }
+
+        if (q.getMatchclauses() != null) {
+            for (MatchClause matchclause : q.getMatchclauses()) {
+                System.out.println(matchclause.toString());
             }
         }
 

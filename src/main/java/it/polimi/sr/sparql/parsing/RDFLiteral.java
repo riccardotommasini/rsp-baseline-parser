@@ -1,4 +1,4 @@
-package it.polimi.sr.sparql;
+package it.polimi.sr.sparql.parsing;
 
 import org.apache.jena.datatypes.RDFDatatype;
 import org.apache.jena.datatypes.TypeMapper;

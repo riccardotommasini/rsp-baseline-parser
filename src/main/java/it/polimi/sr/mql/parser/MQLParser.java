@@ -1,13 +1,15 @@
-package it.polimi.sr.mql;
+package it.polimi.sr.mql.parser;
 
 import it.polimi.sr.csparql.CSPARQLLexer;
-import it.polimi.sr.csparql.Register;
-import it.polimi.sr.csparql.Window;
-import it.polimi.sr.mql.eventcalculus.MatchClause;
-import it.polimi.sr.mql.eventcalculus.PatternCollector;
-import it.polimi.sr.sparql.Function;
-import it.polimi.sr.sparql.Prefix;
-import it.polimi.sr.sparql.ValuesClauseBuilder;
+import it.polimi.sr.mql.streams.Register;
+import it.polimi.sr.mql.streams.Window;
+import it.polimi.sr.mql.MQLQuery;
+import it.polimi.sr.mql.events.calculus.PatternCollector;
+import it.polimi.sr.mql.events.declaration.EventDecl;
+import it.polimi.sr.mql.events.declaration.IFDecl;
+import it.polimi.sr.sparql.parsing.Function;
+import it.polimi.sr.sparql.parsing.Prefix;
+import it.polimi.sr.sparql.parsing.ValuesClauseBuilder;
 import org.apache.jena.atlas.lib.EscapeStr;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.graph.Node;
@@ -54,77 +56,13 @@ public class MQLParser extends CSPARQLLexer {
                 pushQuery(popQuery(1).addEventDecl((EventDecl) pop())));
     }
 
-    public boolean addIF(IFDecl pop) {
-        pop.build();
-        ((EventDecl) peek()).addIF(pop);
-        return true;
-    }
-
     public Rule IfClause() {
         return Sequence(IF(), OPEN_CURLY_BRACE(), TriplesBlock(), push(new IFDecl(popElement())), CLOSE_CURLY_BRACE());
     }
 
     public Rule EventDef() {
-        return ZeroOrMore(Sequence(TestNot(FirstOf("IF", "}")), ANY), WS());
+        return ZeroOrMore(Sequence(TestNot(FirstOf(IF(), CLOSE_CURLY_BRACE())), ANY), WS());
     }
-
-
-    public Rule MatchClause() {
-        return Sequence(MATCH(), PatternExpression(),
-                setMatchClause());
-    }
-
-    public boolean setMatchClause() {
-        getQuery(-1).addMatchClause(new MatchClause((PatternCollector) pop()));
-        return true;
-    }
-
-    public Rule PatternExpression() {
-        return Sequence(FollowedByExpression(),
-                Optional(Sequence(WITHIN(), LPAR(), TimeConstrain(), push(new PatternCollector(match(), (PatternCollector) pop())), RPAR())));
-    }
-
-    public Rule FollowedByExpression() {
-        return Sequence(push(new PatternCollector()), OrExpression(), addExpression(),
-                ZeroOrMore(FirstOf(FOLLOWED_BY(), Sequence(NOT(), FOLLOWED_BY())), setOperator(), OrExpression(), addExpression()));
-    }
-
-    public Rule OrExpression() {
-        return Sequence(
-                push(new PatternCollector()),
-                AndExpression(), addExpression(), ZeroOrMore(OR_(), setOperator(), AndExpression(), addExpression()));
-    }
-
-    public boolean addExpression() {
-        PatternCollector inner = (PatternCollector) pop();
-        PatternCollector outer = (PatternCollector) pop();
-        outer.addPattern(inner);
-        return push(outer);
-    }
-
-    public boolean setOperator() {
-        PatternCollector p = (PatternCollector) pop();
-        if (p.getOperator() == null)
-            p.setOperator(trimMatch());
-        return push(p);
-    }
-
-
-    public Rule AndExpression() {
-        return Sequence(push(new PatternCollector()), QualifyExpression(), addExpression(), ZeroOrMore(AND_(), setOperator(), QualifyExpression(), addExpression()));
-    }
-
-    public Rule QualifyExpression() {
-        return Sequence(push(new PatternCollector()), Optional(FirstOf(EVERY(), NOT())), setOperator(), GuardPostFix(), addExpression());
-    }
-
-    public Rule GuardPostFix() {
-        return FirstOf(
-                Sequence(VarOrIRIref(), push(getQuery(-1).getIfClause((Node) peek())), push(new PatternCollector((IFDecl) pop(), (Node) pop()))),
-                Sequence(LPAR(), PatternExpression(), RPAR(), push(new PatternCollector((PatternCollector) pop()))));
-
-    }
-
 
     public Rule Prologue() {
         return Sequence(Optional(BaseDecl()), ZeroOrMore(PrefixDecl()));
@@ -138,7 +76,6 @@ public class MQLParser extends CSPARQLLexer {
                 AS(), WS()
                 , pushQuery(popQuery(1).setRegister((Register) pop())));
     }
-
 
     public Rule BaseDecl() {
         return Sequence(BASE(), IRI_REF(), pushQuery(((MQLQuery) pop(0)).setCSPARLQBaseURI(trimMatch().replace(">", "").replace("<", ""))), WS());
@@ -179,6 +116,42 @@ public class MQLParser extends CSPARQLLexer {
 
     public Rule AskQuery() {
         return Sequence(Sequence(ASK(), pushQuery(popQuery(0).setAskQuery())), ZeroOrMore(DatasetClause()), WhereClause());
+    }
+
+    public Rule MatchClause() {
+        return Sequence(MATCH(), PatternExpression(),
+                setMatchClause());
+    }
+
+    public Rule PatternExpression() {
+        return Sequence(FollowedByExpression(),
+                Optional(Sequence(WITHIN(), LPAR(), TimeConstrain(), push(new PatternCollector(match(), (PatternCollector) pop())), RPAR())));
+    }
+
+    public Rule FollowedByExpression() {
+        return Sequence(push(new PatternCollector()), OrExpression(), addExpression(),
+                ZeroOrMore(FirstOf(FOLLOWED_BY(), Sequence(NOT(), FOLLOWED_BY())), setOperator(), OrExpression(), addExpression()));
+    }
+
+    public Rule OrExpression() {
+        return Sequence(
+                push(new PatternCollector()),
+                AndExpression(), addExpression(), ZeroOrMore(OR_(), setOperator(), AndExpression(), addExpression()));
+    }
+
+    public Rule AndExpression() {
+        return Sequence(push(new PatternCollector()), QualifyExpression(), addExpression(), ZeroOrMore(AND_(), setOperator(), QualifyExpression(), addExpression()));
+    }
+
+    public Rule QualifyExpression() {
+        return Sequence(push(new PatternCollector()), Optional(FirstOf(EVERY(), NOT())), setOperator(), GuardPostFix(), addExpression());
+    }
+
+    public Rule GuardPostFix() {
+        return FirstOf(
+                Sequence(VarOrIRIref(), push(getQuery(-1).getIfClause((Node) peek())), push(new PatternCollector((IFDecl) pop(), (Node) pop()))),
+                Sequence(LPAR(), PatternExpression(), RPAR(), push(new PatternCollector((PatternCollector) pop()))));
+
     }
 
     public Rule SelectClause() {
@@ -227,7 +200,6 @@ public class MQLParser extends CSPARQLLexer {
     public Rule WindowClause() {
         return Sequence(OPEN_SQUARE_BRACE(), RANGE(), WindowDef(), CLOSE_SQUARE_BRACE());
     }
-
 
     public Rule WindowDef() {
         return FirstOf(LogicalWindow(), PhysicalWindow());
@@ -401,13 +373,6 @@ public class MQLParser extends CSPARQLLexer {
     public Rule WindowGraphPattern() {
         return Sequence(WINDOW(), VarOrIRIref(), GroupGraphPattern(), swap(), addNamedWindowElement());
     }
-
-    public boolean addNamedWindowElement() {
-        ElementNamedGraph value = new ElementNamedGraph((Node) pop(), popElement());
-        getQuery(-1).addElement(value);
-        return push(value);
-    }
-
 
     public Rule GroupOrUnionGraphPattern() {
         return FirstOf(UnionGraphPattern(), GroupGraphPattern());

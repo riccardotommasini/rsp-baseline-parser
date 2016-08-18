@@ -1,7 +1,8 @@
-package it.polimi.sr.mql;
+package it.polimi.sr.sparql.parser;
 
-import it.polimi.sr.sparql.Function;
-import it.polimi.sr.sparql.ValuesClauseBuilder;
+import it.polimi.sr.sparql.parsing.Function;
+import it.polimi.sr.sparql.Query;
+import it.polimi.sr.sparql.parsing.ValuesClauseBuilder;
 import org.apache.jena.datatypes.RDFDatatype;
 import org.apache.jena.datatypes.TypeMapper;
 import org.apache.jena.graph.Node;
@@ -24,7 +25,7 @@ import java.util.Set;
 /**
  * Created by Riccardo on 09/08/16.
  */
-public class MQLQueryParser extends BaseParser<Object> {
+public class SPARQLParserUtils extends BaseParser<Object> {
 
     // NodeConst
     protected final Node XSD_TRUE = NodeConst.nodeTrue;
@@ -39,6 +40,7 @@ public class MQLQueryParser extends BaseParser<Object> {
     protected final Node nRDFsubject = RDF.Nodes.subject;
     protected final Node nRDFpredicate = RDF.Nodes.predicate;
     protected final Node nRDFobject = RDF.Nodes.object;
+
 
     // Graph patterns, true; in templates, false.
     private boolean bNodesAreVariables = true;
@@ -61,6 +63,7 @@ public class MQLQueryParser extends BaseParser<Object> {
 
     private IRIResolver resolver;
 
+
     public boolean bNodeOff() {
         activeLabelMap = bNodeLabels;
         return activeLabelMap.equals(bNodeLabels);
@@ -71,44 +74,46 @@ public class MQLQueryParser extends BaseParser<Object> {
         return activeLabelMap.equals(anonVarLabels);
     }
 
-    public MQLQuery getQuery(int i) {
+    public Query getQuery(int i) {
         if (i == -1) {
             int size = getContext().getValueStack().size();
             i = size > 0 ? size - 1 : 0;
         }
-        return (MQLQuery) peek(i);
+        return (Query) peek(i);
     }
 
-    public MQLQuery popQuery(int i) {
+    public Query popQuery(int i) {
         if (i == -1) {
             int size = getContext().getValueStack().size();
             i = size > 0 ? size - 1 : 0;
         }
-        return (MQLQuery) pop(i);
+        return (Query) pop(i);
     }
 
-    public boolean pushQuery(MQLQuery q) {
+    public boolean pushQuery(Query q) {
         return push(0, q);
     }
+
 
     public Element popElement() {
         return ((Element) pop());
     }
 
+
     public boolean addElementToQuery() {
-        getQuery(1).addElement((ElementGroup) popElement());
+        getQuery(1).addElement(popElement());
         return true;
     }
 
     public boolean addTemplateToQuery() {
-        getQuery(1).setCSPARQLConstructTemplate(new Template((((TripleCollectorBGP) pop()).getBGP())));
+        getQuery(1).setConstructTemplate(new Template((((TripleCollectorBGP) pop()).getBGP())));
         return true;
 
     }
 
     public boolean addTemplateAndPatternToQuery() {
         ((ElementGroup) peek(1)).addElement(new ElementPathBlock(((TripleCollectorBGP) peek()).getBGP()));
-        getQuery(2).setCSPARQLConstructTemplate(new Template((((TripleCollectorBGP) pop()).getBGP())));
+        getQuery(2).setConstructTemplate(new Template((((TripleCollectorBGP) pop()).getBGP())));
         return true;
 
     }
@@ -135,7 +140,7 @@ public class MQLQueryParser extends BaseParser<Object> {
     }
 
     public boolean addUnionElement() {
-        ((ElementUnion) peek(1)).addElement((ElementGroup) popElement());
+        ((ElementUnion) peek(1)).addElement(popElement());
         return true;
     }
 
@@ -168,6 +173,10 @@ public class MQLQueryParser extends BaseParser<Object> {
     public boolean addExprToExprList() {
         ((ExprList) peek(1)).add((Expr) pop());
         return true;
+    }
+
+    void debug(String calls) {
+        System.out.println(calls);
     }
 
     public String trimMatch() {
@@ -234,7 +243,7 @@ public class MQLQueryParser extends BaseParser<Object> {
     }
 
     public boolean startSubQuery(int i) {
-        return push(new MQLQuery(getQuery(i).getQ().getPrologue()));
+        return push(new Query(getQuery(i).getQ().getPrologue()));
     }
 
     public boolean endSubQuery() {

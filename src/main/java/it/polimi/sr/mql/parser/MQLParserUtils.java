@@ -1,5 +1,12 @@
-package it.polimi.sr.sparql;
+package it.polimi.sr.mql.parser;
 
+import it.polimi.sr.mql.MQLQuery;
+import it.polimi.sr.mql.events.calculus.MatchClause;
+import it.polimi.sr.mql.events.calculus.PatternCollector;
+import it.polimi.sr.mql.events.declaration.EventDecl;
+import it.polimi.sr.mql.events.declaration.IFDecl;
+import it.polimi.sr.sparql.parsing.Function;
+import it.polimi.sr.sparql.parsing.ValuesClauseBuilder;
 import org.apache.jena.datatypes.RDFDatatype;
 import org.apache.jena.datatypes.TypeMapper;
 import org.apache.jena.graph.Node;
@@ -22,7 +29,7 @@ import java.util.Set;
 /**
  * Created by Riccardo on 09/08/16.
  */
-public class QueryParser extends BaseParser<Object> {
+public class MQLParserUtils extends BaseParser<Object> {
 
     // NodeConst
     protected final Node XSD_TRUE = NodeConst.nodeTrue;
@@ -37,7 +44,6 @@ public class QueryParser extends BaseParser<Object> {
     protected final Node nRDFsubject = RDF.Nodes.subject;
     protected final Node nRDFpredicate = RDF.Nodes.predicate;
     protected final Node nRDFobject = RDF.Nodes.object;
-
 
     // Graph patterns, true; in templates, false.
     private boolean bNodesAreVariables = true;
@@ -60,7 +66,6 @@ public class QueryParser extends BaseParser<Object> {
 
     private IRIResolver resolver;
 
-
     public boolean bNodeOff() {
         activeLabelMap = bNodeLabels;
         return activeLabelMap.equals(bNodeLabels);
@@ -71,46 +76,44 @@ public class QueryParser extends BaseParser<Object> {
         return activeLabelMap.equals(anonVarLabels);
     }
 
-    public Query getQuery(int i) {
+    public MQLQuery getQuery(int i) {
         if (i == -1) {
             int size = getContext().getValueStack().size();
             i = size > 0 ? size - 1 : 0;
         }
-        return (Query) peek(i);
+        return (MQLQuery) peek(i);
     }
 
-    public Query popQuery(int i) {
+    public MQLQuery popQuery(int i) {
         if (i == -1) {
             int size = getContext().getValueStack().size();
             i = size > 0 ? size - 1 : 0;
         }
-        return (Query) pop(i);
+        return (MQLQuery) pop(i);
     }
 
-    public boolean pushQuery(Query q) {
+    public boolean pushQuery(MQLQuery q) {
         return push(0, q);
     }
-
 
     public Element popElement() {
         return ((Element) pop());
     }
 
-
     public boolean addElementToQuery() {
-        getQuery(1).addElement(popElement());
+        getQuery(1).addElement((ElementGroup) popElement());
         return true;
     }
 
     public boolean addTemplateToQuery() {
-        getQuery(1).setConstructTemplate(new Template((((TripleCollectorBGP) pop()).getBGP())));
+        getQuery(1).setCSPARQLConstructTemplate(new Template((((TripleCollectorBGP) pop()).getBGP())));
         return true;
 
     }
 
     public boolean addTemplateAndPatternToQuery() {
         ((ElementGroup) peek(1)).addElement(new ElementPathBlock(((TripleCollectorBGP) peek()).getBGP()));
-        getQuery(2).setConstructTemplate(new Template((((TripleCollectorBGP) pop()).getBGP())));
+        getQuery(2).setCSPARQLConstructTemplate(new Template((((TripleCollectorBGP) pop()).getBGP())));
         return true;
 
     }
@@ -137,7 +140,7 @@ public class QueryParser extends BaseParser<Object> {
     }
 
     public boolean addUnionElement() {
-        ((ElementUnion) peek(1)).addElement(popElement());
+        ((ElementUnion) peek(1)).addElement((ElementGroup) popElement());
         return true;
     }
 
@@ -170,10 +173,6 @@ public class QueryParser extends BaseParser<Object> {
     public boolean addExprToExprList() {
         ((ExprList) peek(1)).add((Expr) pop());
         return true;
-    }
-
-    void debug(String calls) {
-        System.out.println(calls);
     }
 
     public String trimMatch() {
@@ -240,10 +239,44 @@ public class QueryParser extends BaseParser<Object> {
     }
 
     public boolean startSubQuery(int i) {
-        return push(new Query(getQuery(i).getQ().getPrologue()));
+        return push(new MQLQuery(getQuery(i).getQ().getPrologue()));
     }
 
     public boolean endSubQuery() {
         return push(new ElementSubQuery(popQuery(0).getQ()));
     }
+
+    //CSPARQL
+    public boolean addNamedWindowElement() {
+        ElementNamedGraph value = new ElementNamedGraph((Node) pop(), popElement());
+        getQuery(-1).addElement(value);
+        return push(value);
+    }
+
+    //MQL
+    public boolean addIF(IFDecl pop) {
+        pop.build();
+        ((EventDecl) peek()).addIF(pop);
+        return true;
+    }
+
+    public boolean setMatchClause() {
+        getQuery(-1).addMatchClause(new MatchClause((PatternCollector) pop()));
+        return true;
+    }
+
+    public boolean addExpression() {
+        PatternCollector inner = (PatternCollector) pop();
+        PatternCollector outer = (PatternCollector) pop();
+        outer.addPattern(inner);
+        return push(outer);
+    }
+
+    public boolean setOperator() {
+        PatternCollector p = (PatternCollector) pop();
+        if (p.getOperator() == null)
+            p.setOperator(trimMatch());
+        return push(p);
+    }
+
 }

@@ -1,13 +1,9 @@
-package it.polimi.sr.mql;
+package it.polimi.sr.mql.events.declaration;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
-import org.apache.jena.graph.Node;
-import org.apache.jena.sparql.core.TriplePath;
 import org.apache.jena.sparql.core.Var;
-import org.apache.jena.sparql.syntax.Element;
-import org.apache.jena.sparql.syntax.ElementPathBlock;
 
 /**
  * Created by Riccardo on 16/08/16.
