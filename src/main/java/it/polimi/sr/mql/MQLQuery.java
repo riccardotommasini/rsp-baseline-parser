@@ -38,7 +38,7 @@ public class MQLQuery extends Query {
     private List<ElementNamedGraph> windowGraphElements;
     private Register header;
     private Map<String, EventDecl> eventDeclarations;
-    private boolean MQLQyeryStar;
+    private boolean MQLQyeryStar, emitQuery;
     protected VarExprList MQLprojectVars = new VarExprList();
     private boolean MQLresultVarsSet;
     private List<MatchClause> matchclauses;
@@ -99,21 +99,22 @@ public class MQLQuery extends Query {
     public MQLQuery addElement(ElementGroup sub) {
         setQueryPattern(sub);
 
-        //TODO if emit query only
         //TODO UNION?
-        TripleCollectorBGP collector = new TripleCollectorBGP();
-        List<Element> elements = sub.getElements();
-        for (Element element : elements) {
-            if (element instanceof ElementPathBlock) {
-                ElementPathBlock epb = (ElementPathBlock) element;
-                List<TriplePath> list = epb.getPattern().getList();
-                for (TriplePath triplePath : list) {
-                    collector.addTriple(triplePath.asTriple());
+        if (this.isEmitQuery()) {
+            TripleCollectorBGP collector = new TripleCollectorBGP();
+            List<Element> elements = sub.getElements();
+            for (Element element : elements) {
+                if (element instanceof ElementPathBlock) {
+                    ElementPathBlock epb = (ElementPathBlock) element;
+                    List<TriplePath> list = epb.getPattern().getList();
+                    for (TriplePath triplePath : list) {
+                        collector.addTriple(triplePath.asTriple());
+                    }
                 }
             }
+            Template template = new Template(collector.getBGP());
+            setCSPARQLConstructTemplate(template);
         }
-        Template template = new Template(collector.getBGP());
-        setCSPARQLConstructTemplate(template);
         return this;
     }
 
@@ -313,5 +314,11 @@ public class MQLQuery extends Query {
     public IFDecl getIfClause(Node peek) {
         EventDecl eventDecl = eventDeclarations.get(peek.getName());
         return eventDecl != null ? eventDecl.getIfdecl() : null;
+    }
+
+    public MQLQuery setEmitQuery() {
+        setQueryConstructType();
+        emitQuery=true;
+        return this;
     }
 }

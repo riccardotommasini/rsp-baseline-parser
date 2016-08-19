@@ -1,5 +1,6 @@
 package it.polimi.sr.mql.events.declaration;
 
+import it.polimi.sr.mql.events.calculus.PatternCollector;
 import lombok.Data;
 import org.apache.jena.graph.Node;
 import org.apache.jena.query.Query;
@@ -17,8 +18,10 @@ import java.util.Set;
  */
 @Data
 public class IFDecl {
+
     private Set<Var> vars;
     private ElementGroup clause;
+    private PatternCollector pc;
 
     public IFDecl(Element element) {
         clause = new ElementGroup();
@@ -38,7 +41,6 @@ public class IFDecl {
                 for (TriplePath t : e.getPattern().getList()) {
                     Node n = t.getObject();
                     if (n instanceof Var) {
-                        System.out.println(n);
                         addVar((Var) n);
                     }
                     n = t.getSubject();

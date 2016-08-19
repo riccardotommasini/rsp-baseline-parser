@@ -43,7 +43,7 @@ public class MQLParser extends MQLLexer {
     }
 
     public Rule EmitClause() {
-        return Sequence(EMIT(), pushQuery(popQuery(0).setConstructQuery()),
+        return Sequence(EMIT(), pushQuery(popQuery(0).setEmitQuery()),
                 FirstOf(Sequence(ASTERISK(), pushQuery(popQuery(0).setMQLQueryStar())),
                         OneOrMore(Sequence(Var(), pushQuery(((MQLQuery) pop(1)).addEmitVar((Node) pop()))))));
     }
@@ -118,8 +118,7 @@ public class MQLParser extends MQLLexer {
     }
 
     public Rule MatchClause() {
-        return Sequence(MATCH(), PatternExpression(),
-                setMatchClause());
+        return Sequence(MATCH(), PatternExpression(), setMatchClause());
     }
 
     public Rule PatternExpression() {
@@ -128,28 +127,28 @@ public class MQLParser extends MQLLexer {
     }
 
     public Rule FollowedByExpression() {
-        return Sequence(push(new PatternCollector()), OrExpression(), addExpression(),
-                ZeroOrMore(FirstOf(FOLLOWED_BY(), Sequence(NOT(), FOLLOWED_BY())), setOperator(), OrExpression(), addExpression()));
+        return Sequence(OrExpression(),
+                ZeroOrMore(FirstOf(FOLLOWED_BY(), Sequence(NOT(), FOLLOWED_BY())), enclose(trimMatch()), OrExpression(), addExpression()));
     }
 
     public Rule OrExpression() {
         return Sequence(
-                push(new PatternCollector()),
-                AndExpression(), addExpression(), ZeroOrMore(OR_(), setOperator(), AndExpression(), addExpression()));
+                AndExpression(), ZeroOrMore(OR_(), enclose(trimMatch()), AndExpression(), addExpression()));
     }
 
     public Rule AndExpression() {
-        return Sequence(push(new PatternCollector()), QualifyExpression(), addExpression(), ZeroOrMore(AND_(), setOperator(), QualifyExpression(), addExpression()));
+        return Sequence(QualifyExpression(), ZeroOrMore(AND_(), enclose(trimMatch()),
+                QualifyExpression(), addExpression()));
     }
 
     public Rule QualifyExpression() {
-        return Sequence(push(new PatternCollector()), Optional(FirstOf(EVERY(), NOT())), setOperator(), GuardPostFix(), addExpression());
+        return FirstOf(Sequence(FirstOf(EVERY(), NOT()), push(new PatternCollector(trimMatch())), GuardPostFix(), addExpression()),
+                GuardPostFix());
     }
 
     public Rule GuardPostFix() {
-        return FirstOf(
-                Sequence(VarOrIRIref(), push(getQuery(-1).getIfClause((Node) peek())), push(new PatternCollector((IFDecl) pop(), (Node) pop()))),
-                Sequence(LPAR(), PatternExpression(), RPAR(), push(new PatternCollector((PatternCollector) pop()))));
+        return FirstOf(Sequence(LPAR(), PatternExpression(), RPAR(), push(new PatternCollector((PatternCollector) pop()))),
+                Sequence(VarOrIRIref(), push(getQuery(-1).getIfClause((Node) peek())), push(new PatternCollector((IFDecl) pop(), (Node) pop()))));
 
     }
 

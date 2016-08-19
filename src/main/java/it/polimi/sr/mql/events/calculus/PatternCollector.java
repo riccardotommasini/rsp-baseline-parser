@@ -9,6 +9,7 @@ import org.apache.jena.graph.Node;
 import org.apache.jena.sparql.core.Var;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.MatchResult;
@@ -31,6 +32,7 @@ public class PatternCollector {
     private List<PatternCollector> patterns;
     private IFDecl ifdecl;
     private boolean bracketed = false;
+    private String name;
 
     public PatternCollector(PatternCollector pop) {
         addPattern(pop);
@@ -49,6 +51,10 @@ public class PatternCollector {
 
     }
 
+    public PatternCollector(String s) {
+        this.operator = s;
+    }
+
     public boolean isVar() {
         return var != null;
     }
@@ -56,6 +62,9 @@ public class PatternCollector {
     public PatternCollector(IFDecl ifdecl, Node var) {
         this.var = var.getName();
         this.ifdecl = ifdecl;
+
+        if (ifdecl != null)
+            this.ifdecl.setPc(this);
     }
 
     public void addPattern(PatternCollector p) {
@@ -124,14 +133,46 @@ public class PatternCollector {
         return null;
     }
 
-    public PatternExpr toEPL() {
+    private PatternExpr createFilter(int i, List<IFDecl> ifDecls) {
+        Conjunction and = Expressions.and();
+        for (int j = 0; j < ifDecls.size(); j++) {
+            if (j == i)
+                continue;
 
-        if (isVar()) {
-            return Patterns.filter(var, var);
+            Set<Var> vars = new HashSet<Var>(ifdecl.getVars());
+            IFDecl id = ifDecls.get(j);
+            vars.retainAll(id.getVars());
+            for (Var v : vars) {
+                String name = id.getPc().getName();
+                if (name == null || name.isEmpty()) {
+                    continue;
+                }
+                RelationalOpExpression loc = Expressions.eqProperty(v.getVarName(), name + "." + v.getVarName());
+                and.add(loc);
+            }
         }
 
-        if ((operator == null || operator.isEmpty()) && patterns.size() == 1) {
-            return patterns.get(0).toEPL();
+        if (and.getChildren() == null || and.getChildren().isEmpty()) {
+            return Patterns.filter(var, this.name = var + i);
+        }
+        return Patterns.filter(Filter.create(var, and), name = var + i);
+    }
+
+    public PatternExpr toEPL(List<IFDecl> ifdecls) {
+
+        if (isVar()) {
+            if (ifdecl != null) {
+                for (int i = 0; i < ifdecls.size(); i++) {
+                    if (ifdecl.equals(ifdecls.get(i))) {
+                        return createFilter(i, ifdecls);
+                    }
+                }
+            }
+            return Patterns.filter(var, name = var + 0);
+        }
+
+        if (bracketed || (operator == null || operator.isEmpty()) && patterns != null && patterns.size() == 1) {
+            return patterns.get(0).toEPL(ifdecls);
         }
 
         PatternExpr pattern = null;
@@ -141,25 +182,25 @@ public class PatternCollector {
                 TimePeriodExpression timeExpr = patterns.get(1).toTimeExpr();
                 return Patterns.guard("timer", "within",
                         new Expression[]{timeExpr},
-                        patterns.get(0).toEPL());
+                        patterns.get(0).toEPL(ifdecls));
             } else if ("every".equals(operator.toLowerCase())) {
-                return Patterns.every(patterns.get(0).toEPL());
+                return Patterns.every(patterns.get(0).toEPL(ifdecls));
             } else if ("not".equals(operator.toLowerCase())) {
-                return Patterns.not(patterns.get(0).toEPL());
+                return Patterns.not(patterns.get(0).toEPL(ifdecls));
             } else if ("->".equals(operator.toLowerCase())) {
                 pattern = Patterns.followedBy();
                 for (PatternCollector p : patterns) {
-                    ((PatternFollowedByExpr) pattern).add(p.toEPL());
+                    ((PatternFollowedByExpr) pattern).add(p.toEPL(ifdecls));
                 }
             } else if ("or".equals(operator.toLowerCase())) {
                 pattern = Patterns.or();
                 for (PatternCollector p : patterns) {
-                    ((PatternOrExpr) pattern).add(p.toEPL());
+                    ((PatternOrExpr) pattern).add(p.toEPL(ifdecls));
                 }
             } else if ("and".equals(operator.toLowerCase())) {
                 pattern = Patterns.and();
                 for (PatternCollector p : patterns) {
-                    ((PatternAndExpr) pattern).add(p.toEPL());
+                    ((PatternAndExpr) pattern).add(p.toEPL(ifdecls));
                 }
 
             }
@@ -169,18 +210,16 @@ public class PatternCollector {
 
     }
 
-    public Set<Var> getJoinVariables() {
-        Set<Var> joinVariables = null;
-        for (PatternCollector pattern : patterns) {
-            if (pattern.getIfdecl() != null && pattern.getIfdecl().getVars() != null) {
-                if (joinVariables == null) {
-                    joinVariables = pattern.getIfdecl().getVars();
-                }
-                joinVariables = pattern.getIfdecl().shared(joinVariables);
-                joinVariables.retainAll(pattern.getJoinVariables());
+    public List<IFDecl> getIfDeclarations() {
+        List<IFDecl> ifDeclarations = new ArrayList<IFDecl>();
+        if (isVar() && ifdecl != null)
+            ifDeclarations.add(ifdecl);
+
+        if (patterns != null) {
+            for (PatternCollector p : patterns) {
+                ifDeclarations.addAll(p.getIfDeclarations());
             }
         }
-
-        return joinVariables;
+        return ifDeclarations;
     }
 }
