@@ -7,6 +7,11 @@ import org.apache.jena.sparql.core.Var;
 
 /**
  * Created by Riccardo on 16/08/16.
+ This class represents the event declaration using DL manchester syntax.
+ - The head consists of the left part of the DL rule.
+ - The body, //TODO parse it, is the right part of the DL rule.
+ - ifdecl is a SPARQL-Like constraint for the event instances.
+
  */
 @Data
 @EqualsAndHashCode

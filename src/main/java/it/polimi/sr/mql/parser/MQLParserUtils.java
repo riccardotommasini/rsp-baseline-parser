@@ -283,4 +283,16 @@ public class MQLParserUtils extends BaseParser<Object> {
         return push(trimMatch());
     }
 
+    public boolean enclose(String operator) {
+        PatternCollector inner = (PatternCollector) pop();
+
+        if (inner.isBracketed() || inner.getOperator() == null || !operator.equals(inner.getOperator())) {
+            PatternCollector outer = new PatternCollector(operator);
+            outer.setOperator(operator);
+            outer.addPattern(inner);
+            return push(outer);
+        }
+        return push(inner);
+
+    }
 }

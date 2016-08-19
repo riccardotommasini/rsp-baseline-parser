@@ -141,20 +141,6 @@ public class MQLParser extends MQLLexer {
                 QualifyExpression(), addExpression()));
     }
 
-    public boolean enclose(String operator) {
-        System.out.println(operator);
-        PatternCollector inner = (PatternCollector) pop();
-
-        if (inner.isBracketed() || inner.getOperator() == null || !operator.equals(inner.getOperator())) {
-            PatternCollector outer = new PatternCollector(operator);
-            outer.setOperator(operator);
-            outer.addPattern(inner);
-            return push(outer);
-        }
-        return push(inner);
-
-    }
-
     public Rule QualifyExpression() {
         return FirstOf(Sequence(FirstOf(EVERY(), NOT()), push(new PatternCollector(trimMatch())), GuardPostFix(), addExpression()),
                 GuardPostFix());

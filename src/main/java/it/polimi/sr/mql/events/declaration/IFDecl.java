@@ -41,7 +41,6 @@ public class IFDecl {
                 for (TriplePath t : e.getPattern().getList()) {
                     Node n = t.getObject();
                     if (n instanceof Var) {
-                        System.out.println(n);
                         addVar((Var) n);
                     }
                     n = t.getSubject();

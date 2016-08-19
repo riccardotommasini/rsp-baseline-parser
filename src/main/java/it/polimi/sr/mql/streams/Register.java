@@ -58,7 +58,6 @@ public class Register {
         String s;
 
         Type(String s) {
-            System.out.println(s);
             this.s = s.toUpperCase();
         }
     }
