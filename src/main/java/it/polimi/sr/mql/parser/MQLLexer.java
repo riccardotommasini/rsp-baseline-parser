@@ -1,24 +1,4 @@
-package it.polimi.sr.mql.parser;/*
- * Copyright (c) 2009 Ken Wenzel
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
+package it.polimi.sr.mql.parser;    
 
 import org.parboiled.Rule;
 import org.parboiled.annotations.BuildParseTree;
@@ -319,8 +299,11 @@ public class MQLLexer extends MQLParserUtils {
 
     public Rule IRI_REF() {
         return Sequence(LESS_NO_COMMENT(),
-                ZeroOrMore(Sequence(TestNot(FirstOf(LESS_NO_COMMENT(), GREATER(), '"', OPEN_CURLY_BRACE(),
-                        CLOSE_CURLY_BRACE(), '|', '^', '\\', '`', CharRange('\u0000', '\u0020'))), ANY)),
+                ZeroOrMore(
+                        Sequence(
+                                TestNot(FirstOf(LESS_NO_COMMENT(), GREATER(), '"', OPEN_CURLY_BRACE(),
+                                        CLOSE_CURLY_BRACE(), '|', '^', '\\', '`', CharRange('\u0000', '\u0020'))),
+                                ANY)),
                 GREATER(), WS());
     }
 
@@ -337,8 +320,8 @@ public class MQLLexer extends MQLParserUtils {
     }
 
     public Rule LANGTAG() {
-        return Sequence('@', OneOrMore(PN_CHARS_BASE()), ZeroOrMore(Sequence(
-                MINUS(), OneOrMore(Sequence(PN_CHARS_BASE(), DIGIT())))), WS());
+        return Sequence('@', OneOrMore(PN_CHARS_BASE()),
+                ZeroOrMore(Sequence(MINUS(), OneOrMore(Sequence(PN_CHARS_BASE(), DIGIT())))), WS());
     }
 
     public Rule INTEGER() {
@@ -346,18 +329,17 @@ public class MQLLexer extends MQLParserUtils {
     }
 
     public Rule DECIMAL() {
-        return Sequence(FirstOf(
-                Sequence(OneOrMore(DIGIT()), DOT(), ZeroOrMore(DIGIT())),
-                Sequence(DOT(), OneOrMore(DIGIT()))), WS());
-
+        return Sequence(
+                FirstOf(Sequence(OneOrMore(DIGIT()), DOT(), ZeroOrMore(DIGIT())), Sequence(DOT(), OneOrMore(DIGIT()))),
+                WS());
 
     }
 
     public Rule DOUBLE() {
-        return Sequence(FirstOf(
-                Sequence(OneOrMore(DIGIT()), DOT(), ZeroOrMore(DIGIT()), EXPONENT()),
-                Sequence(DOT(), OneOrMore(DIGIT()), EXPONENT()),
-                Sequence(OneOrMore(DIGIT()), EXPONENT())), WS());
+        return Sequence(
+                FirstOf(Sequence(OneOrMore(DIGIT()), DOT(), ZeroOrMore(DIGIT()), EXPONENT()),
+                        Sequence(DOT(), OneOrMore(DIGIT()), EXPONENT()), Sequence(OneOrMore(DIGIT()), EXPONENT())),
+                WS());
     }
 
     public Rule INTEGER_POSITIVE() {
@@ -385,13 +367,12 @@ public class MQLLexer extends MQLParserUtils {
     }
 
     public Rule EXPONENT() {
-        return Sequence(IgnoreCase('e'), Optional(FirstOf(PLUS(), MINUS())),
-                OneOrMore(DIGIT()));
+        return Sequence(IgnoreCase('e'), Optional(FirstOf(PLUS(), MINUS())), OneOrMore(DIGIT()));
     }
 
     public Rule STRING_LITERAL1() {
-        return Sequence("'", ZeroOrMore(FirstOf(Sequence(TestNot(FirstOf("'",
-                '\\', '\n', '\r')), ANY), ECHAR())), "'", WS());
+        return Sequence("'", ZeroOrMore(FirstOf(Sequence(TestNot(FirstOf("'", '\\', '\n', '\r')), ANY), ECHAR())), "'",
+                WS());
     }
 
     public Rule STRING_LITERAL2() {
@@ -399,9 +380,9 @@ public class MQLLexer extends MQLParserUtils {
     }
 
     public Rule STRING_LITERAL_LONG1() {
-        return Sequence("'''", ZeroOrMore(Sequence(
-                Optional(FirstOf("''", "'")), FirstOf(Sequence(TestNot(FirstOf(
-                        "'", "\\")), ANY), ECHAR()))), "'''", WS());
+        return Sequence("'''", ZeroOrMore(
+                Sequence(Optional(FirstOf("''", "'")), FirstOf(Sequence(TestNot(FirstOf("'", "\\")), ANY), ECHAR()))),
+                "'''", WS());
     }
 
     public Rule STRING_LITERAL_LONG2() {
@@ -418,19 +399,14 @@ public class MQLLexer extends MQLParserUtils {
     }
 
     public Rule VARNAME() {
-        return Sequence(FirstOf(PN_CHARS_U(), DIGIT()),
-                ZeroOrMore(
-                        FirstOf(
-                                PN_CHARS_U(),
-                                DIGIT(), '\u00B7', CharRange('\u0300', '\u036F'),
-                                CharRange('\u203F', '\u2040')))
-                , WS());
+        return Sequence(FirstOf(PN_CHARS_U(), DIGIT()), ZeroOrMore(
+                FirstOf(PN_CHARS_U(), DIGIT(), '\u00B7', CharRange('\u0300', '\u036F'), CharRange('\u203F', '\u2040'))),
+                WS());
     }
 
-
     public Rule PN_CHARS() {
-        return FirstOf(MINUS(), DIGIT(), PN_CHARS_U(), '\u00B7',
-                CharRange('\u0300', '\u036F'), CharRange('\u203F', '\u2040'));
+        return FirstOf(MINUS(), DIGIT(), PN_CHARS_U(), '\u00B7', CharRange('\u0300', '\u036F'),
+                CharRange('\u203F', '\u2040'));
     }
 
     public Rule PN_PREFIX() {
@@ -444,7 +420,7 @@ public class MQLLexer extends MQLParserUtils {
 
     public Rule PN_CHARS_BASE() {
         return FirstOf( //
-                CharRange('A', 'Z'),//
+                CharRange('A', 'Z'), //
                 CharRange('a', 'z'), //
                 CharRange('\u00C0', '\u00D6'), //
                 CharRange('\u00D8', '\u00F6'), //
@@ -614,8 +590,7 @@ public class MQLLexer extends MQLParserUtils {
         return Sequence(IgnoreCase(string), WS());
     }
 
-
-    //CSSPARQL
+    // CSSPARQL
 
     public Rule REGISTER() {
         return StringIgnoreCaseWS("REGISTER");
@@ -665,7 +640,7 @@ public class MQLLexer extends MQLParserUtils {
         return StringIgnoreCaseWS("STREAM");
     }
 
-    //MQL
+    // MQL
     public Rule EVENT() {
         return StringIgnoreCaseWS("EVENT");
     }
@@ -683,7 +658,8 @@ public class MQLLexer extends MQLParserUtils {
     }
 
     public Rule FOLLOWED_BY() {
-        return FirstOf(StringWS("->"), StringIgnoreCaseWS("FOLLOWED_BY"), Sequence(StringIgnoreCaseWS("FOLLOWED"), BY()));
+        return FirstOf(StringWS("->"), StringIgnoreCaseWS("FOLLOWED_BY"),
+                Sequence(StringIgnoreCaseWS("FOLLOWED"), BY()));
     }
 
     public Rule MATCH() {
@@ -697,6 +673,5 @@ public class MQLLexer extends MQLParserUtils {
     public Rule WITHIN() {
         return StringIgnoreCaseWS("WITHIN");
     }
-
 
 }
