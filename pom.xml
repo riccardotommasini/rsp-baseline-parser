@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>it.polimi.rsp.csparq.parser</groupId>
-    <artifactId>C-SPARQL-Parser</artifactId>
+    <artifactId>MQL-Parser</artifactId>
     <version>1.0</version>
 
     <dependencies>
