@@ -1,10 +1,13 @@
 package it.polimi.sr.run;
 
-import it.polimi.sr.mql.streams.Window;
-import it.polimi.sr.mql.events.declaration.EventDecl;
-import it.polimi.sr.mql.parser.MQLParser;
+import com.espertech.esper.client.*;
+import com.espertech.esper.client.soda.EPStatementObjectModel;
 import it.polimi.sr.mql.MQLQuery;
 import it.polimi.sr.mql.events.calculus.MatchClause;
+import it.polimi.sr.mql.events.declaration.EventDecl;
+import it.polimi.sr.mql.events.declaration.IFDecl;
+import it.polimi.sr.mql.parser.MQLParser;
+import it.polimi.sr.mql.streams.Window;
 import org.apache.commons.io.FileUtils;
 import org.apache.jena.graph.Node;
 import org.apache.jena.query.SortCondition;
@@ -22,7 +25,7 @@ import org.parboiled.support.ParsingResult;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -41,14 +44,13 @@ public class MQLMain {
 
         MQLQuery q = result.resultValue;
 
-        System.out.println(q.toString());
         print(q);
         System.out.println("Check valid");
         SyntaxVarScope.check(q);
     }
 
     private static void print(MQLQuery q) {
-        System.out.println("---");
+        System.out.println("--MQL--");
         System.out.println(q.getGraphURIs());
         System.out.println(q.getQueryType());
         System.out.println(q.getNamedGraphURIs());
@@ -85,8 +87,8 @@ public class MQLMain {
 
         if (orderBy != null && !orderBy.isEmpty())
             for (SortCondition sc : orderBy) {
-                System.out.println(sc.getExpression().toString() + "  " +
-                        ((org.apache.jena.query.Query.ORDER_DESCENDING == sc.direction) ? "DESC" : "ASC"));
+                System.out.println(sc.getExpression().toString() + "  "
+                        + ((org.apache.jena.query.Query.ORDER_DESCENDING == sc.direction) ? "DESC" : "ASC"));
             }
 
         System.out.println("LIMIT " + q.getLimit());
@@ -97,8 +99,7 @@ public class MQLMain {
         System.out.println("GROUP BY");
         List<Var> vars = groupBy.getVars();
         for (Var v : vars) {
-            System.out.println("VAR " + v + " EXPR " +
-                    groupBy.getExpr(v));
+            System.out.println("VAR " + v + " EXPR " + groupBy.getExpr(v));
         }
 
         System.out.println("HAVING");
@@ -132,10 +133,7 @@ public class MQLMain {
                 EventDecl x = q.getEventDeclarations().get(k);
                 System.out.println(x);
                 if (x.getIfdecl() != null) {
-                    Set<Var> seleect = new HashSet<Var>();
-                    Var v = Var.alloc("o");
-                    seleect.add(v);
-                    System.out.println(x.getIfdecl().toSPARQL(seleect).toString());
+                    System.out.println(x.getIfdecl().toSPARQL().toString());
                 }
             }
         }
@@ -143,17 +141,88 @@ public class MQLMain {
         if (q.getMatchclauses() != null) {
             for (MatchClause matchclause : q.getMatchclauses()) {
                 System.out.println(matchclause.toString());
+                EPStatementObjectModel epStatementObjectModel = matchclause.toEpl();
+                System.out.println(epStatementObjectModel.toEPL());
+
+
+                for (IFDecl ifDecl : matchclause.getIfDeclarations()) {
+                    System.out.println(ifDecl);
+                }
+
+                for (Var v : matchclause.getJoinVariables()) {
+                    System.out.println(v);
+                }
+
+                testEpl(q);
+
+                System.out.println("---");
             }
         }
 
         System.out.println(q.getHeader());
 
+        System.out.println("--SPARQL--");
+
         System.out.println(q.toString());
 
     }
 
+    private static void testEpl(MQLQuery q) {
+
+
+        ConfigurationMethodRef ref = new ConfigurationMethodRef();
+        Configuration cepConfig = new Configuration();
+        cepConfig.getEngineDefaults().getLogging().setEnableExecutionDebug(true);
+        cepConfig.getEngineDefaults().getLogging().setEnableTimerDebug(true);
+
+
+        Map<String, Object> properties = new HashMap<String, Object>();
+        properties.put("packedId", "string");
+        properties.put("ts", "long");
+
+        cepConfig.addEventType("TEvent", properties);
+        EPServiceProvider cep = EPServiceProviderManager.getProvider("", cepConfig);
+        EPAdministrator cepAdm = cep.getEPAdministrator();
+        EPRuntime cepRT = cep.getEPRuntime();
+
+        Map<String, EventDecl> eventDeclarations = q.getEventDeclarations();
+
+
+        for (String s : eventDeclarations.keySet()) {
+            EventDecl eventDecl = eventDeclarations.get(s);
+            cepAdm.createEPL(eventDecl.toEPLSchema());
+        }
+        EventType[] eventTypes = cepAdm.getConfiguration().getEventTypes();
+        for (EventType eventType : eventTypes) {
+            String[] propertyNames = eventType.getPropertyNames();
+            System.out.println(eventType.getName());
+            for (String propertyName : propertyNames) {
+                System.out.println(propertyName);
+            }
+        }
+
+        for (MatchClause m : q.getMatchclauses()) {
+            EPStatementObjectModel sodaStatement = m.toEpl();
+            System.out.println(sodaStatement.toEPL());
+            cepAdm.create(sodaStatement);
+        }
+
+    }
+
+
     public static String getInput() throws IOException {
-        File file = new File("/Users/Riccardo/_Projects/Streamreasoning/c-sparql_parser/src/main/resources/query.q");
+        File file = new File("/Users/Riccardo/_Projects/Streamreasoning/MQL-Parser/src/main/resources/query.q");
         return FileUtils.readFileToString(file);
     }
+
+    private static String converVarsToEPLProps(Set<Var> vars) {
+        String eplProp = "";
+        for (Var var : vars) {
+            eplProp += var.getVarName() + " String ,";
+        }
+        eplProp = eplProp == "" ? "" : eplProp.substring(0, eplProp.length() - 1);
+        return eplProp;
+    }
+
+
 }

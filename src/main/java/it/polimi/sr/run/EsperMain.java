@@ -11,82 +11,83 @@ import java.util.Map;
  */
 public class EsperMain {
 
-    public static void main(String[] args) {
+	public static void main(String[] args) {
 
-        ConfigurationMethodRef ref = new ConfigurationMethodRef();
-        Configuration cepConfig = new Configuration();
-        cepConfig.getEngineDefaults().getLogging().setEnableExecutionDebug(true);
-        cepConfig.getEngineDefaults().getLogging().setEnableTimerDebug(true);
+		ConfigurationMethodRef ref = new ConfigurationMethodRef();
+		Configuration cepConfig = new Configuration();
+		cepConfig.getEngineDefaults().getLogging().setEnableExecutionDebug(true);
+		cepConfig.getEngineDefaults().getLogging().setEnableTimerDebug(true);
 
+		EPServiceProvider cep = EPServiceProviderManager.getProvider("", cepConfig);
+		EPAdministrator cepAdm = cep.getEPAdministrator();
+		EPRuntime cepRT = cep.getEPRuntime();
 
-        EPServiceProvider cep = EPServiceProviderManager.getProvider("", cepConfig);
-        EPAdministrator cepAdm = cep.getEPAdministrator();
-        EPRuntime cepRT = cep.getEPRuntime();
+		cepAdm.createEPL("create map schema MyAEvent as (id string, loc int)");
+		cepAdm.createEPL("create map schema MyBEvent as (id string, loc int)");
 
+		EPStatement epl = cepAdm.createEPL("select * from pattern [a=MyAEvent -> b=MyBEvent(loc=a.loc, loc>35)]");
 
-        cepAdm.createEPL("create map schema MyAEvent as (id string, loc int)");
-        cepAdm.createEPL("create map schema MyBEvent as (id string, loc int)");
+		epl.addListener(new UpdateListener() {
+			public void update(EventBean[] newEvents, EventBean[] oldEvents) {
 
+				System.out.println("Standard EPL Statement");
+				if (newEvents != null)
+					for (EventBean newEvent : newEvents) {
+						System.out.println(newEvent.getUnderlying().toString());
+					}
+				if (oldEvents != null)
+					for (EventBean oldEvent : oldEvents) {
+						System.out.println(oldEvent.getUnderlying().toString());
+					}
+			}
+		});
 
-        EPStatement epl = cepAdm.createEPL("select * from pattern [every a=MyAEvent -> b=MyBEvent(loc=a.loc)]");
+		EPStatementObjectModel model = new EPStatementObjectModel();
+		model.setSelectClause(SelectClause.createWildcard());
 
-        epl.addListener(new UpdateListener() {
-            public void update(EventBean[] newEvents, EventBean[] oldEvents) {
+		PatternFilterExpr first = Patterns.filter("MyAEvent", "a");
 
-                System.out.println("Standard EPL Statement");
-                if (newEvents != null)
-                    for (EventBean newEvent : newEvents) {
-                        System.out.println(newEvent.getUnderlying().toString());
-                    }
-                if (oldEvents != null)
-                    for (EventBean oldEvent : oldEvents) {
-                        System.out.println(oldEvent.getUnderlying().toString());
-                    }
-            }
-        });
+		RelationalOpExpression loc = Expressions.eqProperty("loc", "a.loc");
+		RelationalOpExpression loc1 = Expressions.ge("loc", 35);
+		Conjunction and = Expressions.and(loc, loc1);
 
+		PatternFilterExpr second = Patterns.filter(Filter.create("MyBEvent", and), "b");
 
-        EPStatementObjectModel model = new EPStatementObjectModel();
-        model.setSelectClause(SelectClause.createWildcard());
+		PatternExpr pattern = Patterns.followedBy(first, second);
 
-        PatternEveryExpr first = Patterns.everyFilter("MyAEvent", "a");
-        PatternFilterExpr second = Patterns.filter(Filter.create("MyBEvent", Expressions.geProperty("loc", "a.loc")), "b");
+		model.setFromClause(FromClause.create(PatternStream.create(pattern)));
 
-        PatternExpr pattern = Patterns.followedBy(first, second);
+		EPStatement epStatement = cepAdm.create(model);
 
-        model.setFromClause(FromClause.create(PatternStream.create(pattern)));
+		System.out.println(model.toEPL());
+		epStatement.addListener(new UpdateListener() {
+			public void update(EventBean[] newEvents, EventBean[] oldEvents) {
 
-        EPStatement epStatement = cepAdm.create(model);
+				System.out.println("API Built EPL Statement");
+				if (newEvents != null)
+					for (EventBean newEvent : newEvents) {
+						System.out.println(newEvent.getUnderlying());
+					}
+				if (oldEvents != null)
+					for (EventBean oldEvent : oldEvents) {
+						System.out.println(oldEvent.getUnderlying());
+					}
+			}
+		});
 
-        System.out.println(model.toEPL());
-        epStatement.addListener(new UpdateListener() {
-            public void update(EventBean[] newEvents, EventBean[] oldEvents) {
+		Map<String, String> event = new HashMap<String, String>();
+		event.put("id", "A");
+		event.put("loc", "4");
 
-                System.out.println("API Built EPL Statement");
-                if (newEvents != null)
-                    for (EventBean newEvent : newEvents) {
-                        System.out.println(newEvent.getUnderlying());
-                    }
-                if (oldEvents != null)
-                    for (EventBean oldEvent : oldEvents) {
-                        System.out.println(oldEvent.getUnderlying());
-                    }
-            }
-        });
+		cepRT.sendEvent(event, "MyAEvent");
 
-        Map<String, String> event = new HashMap<String, String>();
-        event.put("id", "A");
-        event.put("loc", "4");
+		event = new HashMap<String, String>();
+		event.put("id", "B");
+		event.put("loc", "3");
 
-        cepRT.sendEvent(event, "MyAEvent");
+		cepRT.sendEvent(event, "MyBEvent");
 
-        event = new HashMap<String, String>();
-        event.put("id", "B");
-        event.put("loc", "3");
+		System.out.println("END");
 
-        cepRT.sendEvent(event, "MyBEvent");
-
-        System.out.println("END");
-
-    }
+	}
 }

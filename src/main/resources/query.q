@@ -9,27 +9,34 @@ PREFIX dul: <http://IBCNServices.github.io/Accio-Ontology/ontologies/DUL.owl#>
 CREATE EVENT ?SmokeFilter  {
     subClassOf ( ssniot:hasContext some ( accio:observedProperty some (ssn:Smoke) ) )
 
-        IF {    ?smokeEvent ssniot:hasContext ?obs1.
-                ?obs1 ssn:observedBy ?sensingDevice1.
-  		        ?sensingDevice1 dul:hasLocation	?loc1.
-  		        ?loc1 dul:hasDataValue ?value. }
+        IF { ?loc1 dul:hasDataValue ?value. }
 
 }
 
 CREATE EVENT ?TemperatureFilter  {
     subClassOf ( ssniot:hasContext some ( accio:observedProperty some (ssn:Temperature) ) )
 
-        IF {    ?tempEvent ssniot:hasContext ?obs2.
-                ?obs2 ssn:observedBy ?sensingDevice2.
-                ?sensingDevice1 dul:hasLocation	?loc2.
-                ?loc2 dul:hasDataValue ?value. }
+        IF { ?loc2 dul:hasDataValue ?value1. }
+}
+
+CREATE EVENT ?A  {
+    subClassOf ( ssniot:hasContext some ( accio:observedProperty some (ssn:Temperature) ) )
+
+        IF { ?loc3 dul:hasDataValue ?value1. }
+}
+
+CREATE EVENT ?B  {
+    subClassOf ( ssniot:hasContext some ( accio:observedProperty some (ssn:Temperature) ) )
+
+        IF { ?loc4 dul:hasDataValue ?value. }
 }
 
 EMIT ?SmokeFilter ?TemperatureFilter
 
-MATCH every ?SmokeFilter -> (?TemperatureFilter or ?a and not ?d)
+MATCH every ?SmokeFilter -> (( ?TemperatureFilter -> ?A) and not ?B) WITHIN (5m)
 
-FROM NAMED WINDOW :tmp [RANGE 1h, SLIDE 15m] ON STREAM :temperaturestr
+FROM  WINDOW  [RANGE 1h, SLIDE 15m] ON STREAM :temperaturestr
+FROM  WINDOW  [RANGE 1h, SLIDE 15m] ON STREAM :smokestr
 FROM NAMED WINDOW :smk [RANGE 1h, SLIDE 15m] ON STREAM :smokestr
 
 WHERE  {
@@ -46,6 +53,19 @@ WHERE  {
 
     ?result ssn:hasValue ?value.
     ?value dul:hasDataValue ?v.
+
+    WINDOW :tmp {
+            ?s ?p ?o
+    }
+
+
+
+      WINDOW :smk {
+                ?s ?p ?o
+
+        }
+
+
 
     FILTER(?v > 90)
 }
