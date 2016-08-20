@@ -1,8 +1,15 @@
 package it.polimi.sr.mql.streams;
 
+import com.espertech.esper.client.soda.*;
+import it.polimi.sr.mql.utils.EncodingUtils;
 import lombok.*;
 import org.apache.jena.graph.Node_URI;
 
+import java.io.StringWriter;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
 import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -33,6 +40,7 @@ public class Window {
     final private Pattern p = Pattern.compile(regex);
 
     private WindowType type = WindowType.Logical;
+    private View window;
 
     public Window addConstrain(String match) {
         // TODO hide visibility out of the package
@@ -107,6 +115,37 @@ public class Window {
         return result;
     }
 
+    public View getWindow() {
+        View view;
+        ArrayList<Expression> parameters = new ArrayList<Expression>();
+        if (WindowType.Physical.equals(type)) {
+
+            parameters.add(Expressions.constant(omega));
+            view = View.create("win", "length", parameters);
+
+        } else {
+            parameters.add(getTimePeriod(omega, unit_omega));
+            view = View.create("win", "time", parameters);
+        }
+        return view;
+    }
+
+    private TimePeriodExpression getTimePeriod(Integer omega, String unit_omega) {
+        if ("ms".equals(unit_omega)) {
+            return Expressions.timePeriod(null, null, null, null, omega);
+        } else if ("s".equals(unit_omega)) {
+            return Expressions.timePeriod(null, null, null, omega, null);
+        } else if ("m".equals(unit_omega)) {
+            return Expressions.timePeriod(null, null, omega, null, null);
+        } else if ("h".equals(unit_omega)) {
+            return Expressions.timePeriod(null, omega, null, null, null);
+        } else if ("d".equals(unit_omega)) {
+            return Expressions.timePeriod(omega, null, null, null, null);
+        }
+        return null;
+    }
+
+
     public enum WindowType {
         Logical, Physical;
     }
@@ -115,8 +154,36 @@ public class Window {
         return iri != null;
     }
 
-    public String toEPL() {
-        //TODO implement
-        return null;
+    public String toEPLSchema() {
+        CreateSchemaClause schema = new CreateSchemaClause();
+        schema.setSchemaName(EncodingUtils.encode(stream.getIri().getURI()));
+        schema.setInherits(new HashSet<String>(Arrays.asList(new String[]{"TStream"})));
+        List<SchemaColumnDesc> columns = new ArrayList<SchemaColumnDesc>();
+        schema.setColumns(columns);
+        StringWriter writer = new StringWriter();
+        schema.toEPL(writer);
+        return writer.toString();
     }
+
+    public EPStatementObjectModel toEPL() {
+        EPStatementObjectModel stmt = new EPStatementObjectModel();
+        stmt.setSelectClause(SelectClause.createWildcard());
+        FromClause fromClause = FromClause.create();
+        FilterStream stream = FilterStream.create(EncodingUtils.encode(this.stream.getIri().getURI()));
+        stream.addView(getWindow());
+        fromClause.add(stream);
+        stmt.setFromClause(fromClause);
+
+        OutputLimitClause outputLimitClause;
+
+        if (WindowType.Physical.equals(type)) {
+            outputLimitClause = OutputLimitClause.create(OutputLimitSelector.SNAPSHOT, beta);
+        } else {
+            outputLimitClause = OutputLimitClause.create(OutputLimitSelector.SNAPSHOT, getTimePeriod(beta, unit_beta));
+        }
+
+        stmt.setOutputLimitClause(outputLimitClause);
+        return stmt;
+    }
+
 }

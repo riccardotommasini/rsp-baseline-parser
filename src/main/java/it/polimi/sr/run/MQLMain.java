@@ -25,6 +25,7 @@ import org.parboiled.support.ParsingResult;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -49,7 +50,7 @@ public class MQLMain {
         SyntaxVarScope.check(q);
     }
 
-    private static void print(MQLQuery q) {
+    private static void print(MQLQuery q) throws UnsupportedEncodingException {
         System.out.println("--MQL--");
         System.out.println(q.getGraphURIs());
         System.out.println(q.getQueryType());
@@ -167,7 +168,7 @@ public class MQLMain {
 
     }
 
-    private static void testEpl(MQLQuery q) {
+    private static void testEpl(MQLQuery q) throws UnsupportedEncodingException {
 
 
         ConfigurationMethodRef ref = new ConfigurationMethodRef();
@@ -181,6 +182,7 @@ public class MQLMain {
         properties.put("ts", "long");
 
         cepConfig.addEventType("TEvent", properties);
+        cepConfig.addEventType("TStream", properties);
         EPServiceProvider cep = EPServiceProviderManager.getProvider("", cepConfig);
         EPAdministrator cepAdm = cep.getEPAdministrator();
         EPRuntime cepRT = cep.getEPRuntime();
@@ -192,12 +194,35 @@ public class MQLMain {
             EventDecl eventDecl = eventDeclarations.get(s);
             cepAdm.createEPL(eventDecl.toEPLSchema());
         }
+
         EventType[] eventTypes = cepAdm.getConfiguration().getEventTypes();
         for (EventType eventType : eventTypes) {
             String[] propertyNames = eventType.getPropertyNames();
             System.out.println(eventType.getName());
             for (String propertyName : propertyNames) {
                 System.out.println(propertyName);
+            }
+        }
+
+        if (q.getNamedwindows() != null) {
+
+            for (Node w : q.getNamedwindows().keySet()) {
+                Window window = q.getNamedwindows().get(w);
+                System.out.println(window.toEPLSchema());
+                cepAdm.createEPL(window.toEPLSchema());
+                EPStatementObjectModel stmt = window.toEPL();
+                System.out.println(stmt.toEPL());
+                cepAdm.create(stmt);
+            }
+        }
+
+        if (q.getWindows() != null) {
+            for (Window w : q.getWindows()) {
+                System.out.println(w.toEPLSchema());
+                cepAdm.createEPL(w.toEPLSchema());
+                EPStatementObjectModel stmt = w.toEPL();
+                System.out.println(stmt.toEPL());
+                cepAdm.create(stmt);
             }
         }
 
