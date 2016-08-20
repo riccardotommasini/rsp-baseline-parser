@@ -80,7 +80,6 @@ public class MQLQuery extends Query {
         return this;
     }
 
-
     public MQLQuery setQueryStar() {
         setQueryResultStar(true);
         return this;
@@ -99,7 +98,7 @@ public class MQLQuery extends Query {
     public MQLQuery addElement(ElementGroup sub) {
         setQueryPattern(sub);
 
-        //TODO UNION?
+        // TODO UNION?
         if (this.isEmitQuery()) {
             TripleCollectorBGP collector = new TripleCollectorBGP();
             List<Element> elements = sub.getElements();
@@ -221,28 +220,31 @@ public class MQLQuery extends Query {
         return iri.toString();
     }
 
-    public MQLQuery addNamedWindow(Window pop) {
+    public MQLQuery addNamedWindow(Window nw) {
         if (namedwindows == null)
             namedwindows = new HashMap<Node, Window>();
-        if (namedwindows.containsKey(pop.getIri()))
-            throw new QueryException("Window already opened on a stream: " + pop.getStream().getIri());
-        else
-            namedwindows.put(pop.getIri(), pop);
+        if (namedwindows.containsKey(nw.getIri()))
+            throw new QueryException("Window [" + nw.getIri() +
+                    " ] already opened on a stream: " + namedwindows.get(nw.getIri()));
+
+        addNamedGraphURI(nw.getIri());
+        namedwindows.put(nw.getIri(), nw);
         return this;
     }
 
-    public MQLQuery addWindow(Window pop) {
+    public MQLQuery addWindow(Window w) {
 
-        if (pop.getIri() != null) {
-            return addNamedWindow(pop);
+        if (w.isNamed()) {
+            return addNamedWindow(w);
         }
 
         if (windows == null)
             windows = new HashSet<Window>();
-        if (windows.contains(pop))
-            throw new QueryException("Window already opened on a stream: " + pop.getStream().getIri());
-        else
-            windows.add(pop);
+        if (windows.contains(w))
+            throw new QueryException("Window already opened on default stream: " + w.getStream().getIri());
+
+        addGraphURI(w.getStream().getIri());
+        windows.add(w);
         return this;
     }
 
@@ -253,7 +255,6 @@ public class MQLQuery extends Query {
         windowGraphElements.add(elm);
         return this;
     }
-
 
     @Override
     public String toString() {
@@ -292,18 +293,17 @@ public class MQLQuery extends Query {
         if (varlist.contains(v)) {
             Expr expr = varlist.getExpr(v);
             if (expr != null)
-                throw new QueryBuildException("Duplicate variable (had an expression) in result projection '" + v + "'");
+                throw new QueryBuildException(
+                        "Duplicate variable (had an expression) in result projection '" + v + "'");
         }
         varlist.add(v);
         return this;
     }
 
-
     public MQLQuery setMQLQueryStar() {
         this.MQLQyeryStar = true;
         return this;
     }
-
 
     public void addMatchClause(MatchClause matchClause) {
         if (matchclauses == null)
@@ -318,7 +318,7 @@ public class MQLQuery extends Query {
 
     public MQLQuery setEmitQuery() {
         setQueryConstructType();
-        emitQuery=true;
+        emitQuery = true;
         return this;
     }
 }
