@@ -14,47 +14,43 @@ import java.util.Set;
  */
 public class MatchClause {
 
+	@Override
+	public String toString() {
+		return "MatchClause{" + "expr=" + expr + '}';
+	}
 
-    @Override
-    public String toString() {
-        return "MatchClause{" +
-                "expr=" + expr +
-                '}';
-    }
+	private PatternCollector expr;
 
-    private PatternCollector expr;
+	public MatchClause(PatternCollector pop) {
+		this.expr = pop;
+	}
 
-    public MatchClause(PatternCollector pop) {
-        this.expr = pop;
-    }
+	public Set<Var> getJoinVariables() {
+		Set<Var> joinVariables = null;
+		for (IFDecl ifDecl : getIfDeclarations()) {
+			if (joinVariables == null) {
+				joinVariables = new HashSet<Var>(ifDecl.getVars());
+			}
+			joinVariables.retainAll(ifDecl.getVars());
+		}
+		return joinVariables;
+	}
 
+	public List<IFDecl> getIfDeclarations() {
+		List<IFDecl> ifDeclarations = new ArrayList<IFDecl>();
+		if (expr.getIfdecl() != null) {
+			ifDeclarations.add(expr.getIfdecl());
+		}
+		ifDeclarations.addAll(expr.getIfDeclarations());
+		return ifDeclarations;
 
-    public Set<Var> getJoinVariables() {
-        Set<Var> joinVariables = null;
-        for (IFDecl ifDecl : getIfDeclarations()) {
-            if (joinVariables == null) {
-                joinVariables = new HashSet<Var>(ifDecl.getVars());
-            }
-            joinVariables.retainAll(ifDecl.getVars());
-        }
-        return joinVariables;
-    }
+	}
 
-    public List<IFDecl> getIfDeclarations() {
-        List<IFDecl> ifDeclarations = new ArrayList<IFDecl>();
-        if (expr.getIfdecl() != null) {
-            ifDeclarations.add(expr.getIfdecl());
-        }
-        ifDeclarations.addAll(expr.getIfDeclarations());
-        return ifDeclarations;
-
-    }
-
-    public EPStatementObjectModel toEpl() {
-        EPStatementObjectModel model = new EPStatementObjectModel();
-        model.setSelectClause(SelectClause.createWildcard());
-        PatternExpr pattern = expr.toEPL(getIfDeclarations());
-        model.setFromClause(FromClause.create(PatternStream.create(pattern)));
-        return model;
-    }
+	public EPStatementObjectModel toEpl() {
+		EPStatementObjectModel model = new EPStatementObjectModel();
+		model.setSelectClause(SelectClause.createWildcard());
+		PatternExpr pattern = expr.toEPL(getIfDeclarations());
+		model.setFromClause(FromClause.create(PatternStream.create(pattern)));
+		return model;
+	}
 }

@@ -39,7 +39,6 @@ public class PatternCollector {
         bracketed = true;
     }
 
-
     public PatternCollector(String match, PatternCollector pop) {
         operator = "WITHIN";
         PatternCollector var = new PatternCollector();
@@ -77,7 +76,6 @@ public class PatternCollector {
     public String toString() {
         String s = "";
 
-
         if (isVar()) {
             return var;
         }
@@ -92,7 +90,6 @@ public class PatternCollector {
             s += bracketed ? ")" : "";
             return s;
         }
-
 
         s += bracketed ? "(" : "";
 
@@ -134,7 +131,7 @@ public class PatternCollector {
     }
 
     private PatternExpr createFilter(int i, List<IFDecl> ifDecls) {
-        Conjunction and = Expressions.and();
+        Conjunction andExpr = Expressions.and();
         for (int j = 0; j < ifDecls.size(); j++) {
             if (j == i)
                 continue;
@@ -144,18 +141,18 @@ public class PatternCollector {
             vars.retainAll(id.getVars());
             for (Var v : vars) {
                 String name = id.getPc().getName();
-                if (name == null || name.isEmpty()) {
-                    continue;
+                if (name != null && !name.isEmpty()) {
+                    andExpr.add(Expressions.eqProperty(v.getVarName(), name + "." + v.getVarName()));
                 }
-                RelationalOpExpression loc = Expressions.eqProperty(v.getVarName(), name + "." + v.getVarName());
-                and.add(loc);
             }
         }
 
-        if (and.getChildren() == null || and.getChildren().isEmpty()) {
+        if (andExpr.getChildren() == null || andExpr.getChildren().isEmpty()) {
             return Patterns.filter(var, this.name = var + i);
+        } else if (andExpr.getChildren().size() == 1) {
+            return Patterns.filter(Filter.create(var, andExpr.getChildren().get(0)), var + i);
         }
-        return Patterns.filter(Filter.create(var, and), name = var + i);
+        return Patterns.filter(Filter.create(var, andExpr), var + i);
     }
 
     public PatternExpr toEPL(List<IFDecl> ifdecls) {
@@ -180,9 +177,7 @@ public class PatternCollector {
 
             if ("within".equals(operator.toLowerCase())) {
                 TimePeriodExpression timeExpr = patterns.get(1).toTimeExpr();
-                return Patterns.guard("timer", "within",
-                        new Expression[]{timeExpr},
-                        patterns.get(0).toEPL(ifdecls));
+                return Patterns.guard("timer", "within", new Expression[]{timeExpr}, patterns.get(0).toEPL(ifdecls));
             } else if ("every".equals(operator.toLowerCase())) {
                 return Patterns.every(patterns.get(0).toEPL(ifdecls));
             } else if ("not".equals(operator.toLowerCase())) {
