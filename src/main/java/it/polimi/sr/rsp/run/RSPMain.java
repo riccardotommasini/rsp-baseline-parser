@@ -112,8 +112,12 @@ public class RSPMain {
 
         if (q.getNamedwindows() != null) {
 
-            for (Node w : q.getNamedwindows().keySet()) {
-                System.out.println(q.getNamedwindows().get(w));
+            for (Map.Entry<Node, Window> e : q.getNamedwindows().entrySet()) {
+                String stream = e.getKey().getURI();
+                System.out.println(stream);
+                Window w = e.getValue();
+                System.out.println(w.toEPL().toEPL());
+                System.out.println(w.getStream().toEPLSchema());
             }
         }
 

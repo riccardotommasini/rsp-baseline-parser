@@ -149,7 +149,6 @@ public class SPARQLQuery extends Query {
     }
 
     public SPARQLQuery addQCResultVar(Node pop, Expr pop1) {
-        System.out.println("addQCResultVar");
         addQCResultVar(pop, pop1);
         setQueryResultStar(false);
         return this;

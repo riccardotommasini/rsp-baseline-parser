@@ -9,6 +9,7 @@ import java.util.regex.Pattern;
 /**
  * Created by Riccardo on 12/08/16.
  */
+@Data
 @NoArgsConstructor
 @ToString(exclude = {"regex", "p"})
 public class Register {

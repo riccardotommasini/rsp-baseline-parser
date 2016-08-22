@@ -5,11 +5,7 @@ import it.polimi.sr.rsp.utils.EncodingUtils;
 import lombok.*;
 import org.apache.jena.graph.Node_URI;
 
-import java.io.StringWriter;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
 import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -154,16 +150,6 @@ public class Window {
         return iri != null;
     }
 
-    public String toEPLSchema() {
-        CreateSchemaClause schema = new CreateSchemaClause();
-        schema.setSchemaName(EncodingUtils.encode(stream.getIri().getURI()));
-        schema.setInherits(new HashSet<String>(Arrays.asList(new String[]{"TStream"})));
-        List<SchemaColumnDesc> columns = new ArrayList<SchemaColumnDesc>();
-        schema.setColumns(columns);
-        StringWriter writer = new StringWriter();
-        schema.toEPL(writer);
-        return writer.toString();
-    }
 
     public EPStatementObjectModel toEPL() {
         EPStatementObjectModel stmt = new EPStatementObjectModel();
@@ -184,6 +170,11 @@ public class Window {
 
         stmt.setOutputLimitClause(outputLimitClause);
         return stmt;
+    }
+
+
+    public String getStreamURI() {
+        return stream.getIri().getURI();
     }
 
 }

@@ -33,6 +33,13 @@ public class RSPQuery extends SPARQLQuery implements it.polimi.heaven.rsp.rsp.qu
         return this;
     }
 
+    public String getId() {
+        if (header != null) {
+            return header.getId();
+        }
+        return (new Random()).nextInt(9999) + "";
+    }
+
     public Query getQ() {
         return this;
     }
