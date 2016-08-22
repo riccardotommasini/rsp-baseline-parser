@@ -17,7 +17,7 @@ import java.util.*;
  */
 @Data
 @NoArgsConstructor
-public class RSPQuery extends SPARQLQuery {
+public class RSPQuery extends SPARQLQuery implements it.polimi.heaven.rsp.rsp.querying.Query {
 
     private Map<Node, Window> namedwindows;
     private Set<Window> windows;
