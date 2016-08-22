@@ -1,6 +1,0 @@
-# java: route
-PREFIX :        <http://example.org/>
-PREFIX apf:     <http://jena.apache.org/tests/property#>
-
-SELECT *
-{ ?s apf:assign "v" . }
