@@ -1,7 +1,7 @@
 package it.polimi.sr.rsp.streams;
 
 import com.espertech.esper.client.soda.*;
-import it.polimi.sr.mql.utils.EncodingUtils;
+import it.polimi.sr.rsp.utils.EncodingUtils;
 import lombok.*;
 import org.apache.jena.graph.Node_URI;
 

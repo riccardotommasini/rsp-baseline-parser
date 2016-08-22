@@ -1,7 +1,7 @@
 package it.polimi.sr.rsp.run;
 
-import it.polimi.sr.rsp.RSPQuery;
 import it.polimi.sr.rsp.RSPQLParser;
+import it.polimi.sr.rsp.RSPQuery;
 import it.polimi.sr.rsp.streams.Window;
 import org.apache.commons.io.FileUtils;
 import org.apache.jena.graph.Node;
@@ -139,7 +139,7 @@ public class RSPMain {
     }
 
     public static String getInput() throws IOException {
-        File file = new File("/Users/Riccardo/_Projects/Streamreasoning/MQL-Parser/src/main/resources/rspquery.q");
+        File file = new File("/Users/Riccardo/_Projects/Streamreasoning/rsp-baseline-parser/src/main/resources/rspquery.q");
         return FileUtils.readFileToString(file);
     }
 
