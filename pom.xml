@@ -8,12 +8,20 @@
     <artifactId>rsp-baseline-parser</artifactId>
     <version>1.0</version>
 
+    <repositories>
+        <repository>
+            <id>jitpack.io</id>
+            <url>https://jitpack.io</url>
+        </repository>
+    </repositories>
+
     <dependencies>
         <dependency>
             <groupId>com.github.streamreasoning.heaven</groupId>
             <artifactId>heaven-rsp</artifactId>
             <version>0.9.3</version>
         </dependency>
+
         <dependency>
             <groupId>org.apache.jena</groupId>
             <artifactId>jena-core</artifactId>
