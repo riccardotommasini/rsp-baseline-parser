@@ -184,7 +184,7 @@ public class SPARQLParser extends Lexer {
     }
 
     public Rule GroupGraphPattern() {
-        return Sequence(OPEN_CURLY_BRACE(), FirstOf(SubSelect(), GroupGraphPatternSub()), CLOSE_CURLY_BRACE());
+        return Sequence(WS(), OPEN_CURLY_BRACE(), FirstOf(SubSelect(), GroupGraphPatternSub()), CLOSE_CURLY_BRACE());
     }
 
     public Rule SubSelect() {

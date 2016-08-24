@@ -172,7 +172,6 @@ public class Window {
         return stmt;
     }
 
-
     public String getStreamURI() {
         return stream.getIri().getURI();
     }
