@@ -10,7 +10,13 @@ import org.apache.jena.query.QueryException;
 import org.apache.jena.sparql.core.Prologue;
 import org.apache.jena.sparql.syntax.ElementNamedGraph;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.Set;
 
 /**
  * Created by Riccardo on 05/08/16.
@@ -83,6 +89,24 @@ public class RSPQuery extends SPARQLQuery implements it.polimi.heaven.rsp.rsp.qu
     public RSPQuery setRegister(Register register) {
         this.header = register;
         return this;
+    }
+
+    @Override
+    public List<String> getNamedGraphURIs() {
+        return new ArrayList<String>();
+    }
+
+    @Override
+    public List<String> getGraphURIs() {
+        return new ArrayList<String>();
+    }
+
+    public List<String> getRSPNamedGraphURIs() {
+        return super.getNamedGraphURIs();
+    }
+
+    public List<String> getRSPGraphURIs() {
+        return super.getGraphURIs();
     }
 
     @Override
