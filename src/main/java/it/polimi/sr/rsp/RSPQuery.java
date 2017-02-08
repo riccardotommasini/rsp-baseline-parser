@@ -5,6 +5,7 @@ import it.polimi.sr.rsp.streams.Window;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.apache.jena.graph.Node;
+import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.query.Query;
 import org.apache.jena.query.QueryException;
 import org.apache.jena.sparql.core.Prologue;
@@ -107,6 +108,37 @@ public class RSPQuery extends SPARQLQuery implements it.polimi.heaven.rsp.rsp.qu
 
     public List<String> getRSPGraphURIs() {
         return super.getGraphURIs();
+    }
+
+    /**
+     * Test whether the query mentions a URI for a named window.
+     *
+     * @param uri
+     * @return True if the URI used in a FROM NAMED WINDOW clause
+     */
+    public boolean usesNamedWindowURI(String uri) {
+        if(namedwindows!=null && !namedwindows.isEmpty()){
+            return namedwindows.containsKey(NodeFactory.createURI(uri));
+        }
+        return false;
+    }
+
+
+    /**
+     * Test whether the query mentions a URI for a window.
+     *
+     * @param uri
+     * @return True if the URI used in a FROM WINDOW clause
+     */
+    public boolean usesWindowURI(String uri) {
+        if (windows != null && !windows.isEmpty()) {
+            boolean res = true;
+            for (Window w : windows) {
+                res &= !w.getStream().getIri().getURI().equals(uri);
+            }
+            return !res;
+        }
+        return false;
     }
 
     @Override
