@@ -153,7 +153,6 @@ public class Window {
 
     public EPStatementObjectModel toEPL() {
         EPStatementObjectModel stmt = new EPStatementObjectModel();
-        stmt.setSelectClause(SelectClause.createWildcard());
         FromClause fromClause = FromClause.create();
         FilterStream stream = FilterStream.create(EncodingUtils.encode(this.stream.getIri().getURI()));
         stream.addView(getWindow());
@@ -166,6 +165,29 @@ public class Window {
             outputLimitClause = OutputLimitClause.create(OutputLimitSelector.SNAPSHOT, beta);
         } else {
             outputLimitClause = OutputLimitClause.create(OutputLimitSelector.SNAPSHOT, getTimePeriod(beta, unit_beta));
+        }
+
+        stmt.setOutputLimitClause(outputLimitClause);
+        return stmt;
+    }
+
+    public EPStatementObjectModel toIREPL() {
+        EPStatementObjectModel stmt = new EPStatementObjectModel();
+        SelectClause selectClause = SelectClause.create();
+        selectClause.setStreamSelector(StreamSelector.RSTREAM_ISTREAM_BOTH);
+        stmt.setSelectClause(selectClause);
+        FromClause fromClause = FromClause.create();
+        FilterStream stream = FilterStream.create(EncodingUtils.encode(this.stream.getIri().getURI()));
+        stream.addView(getWindow());
+        fromClause.add(stream);
+        stmt.setFromClause(fromClause);
+
+        OutputLimitClause outputLimitClause;
+
+        if (WindowType.Physical.equals(type)) {
+            outputLimitClause = OutputLimitClause.create(OutputLimitSelector.DEFAULT, beta);
+        } else {
+            outputLimitClause = OutputLimitClause.create(OutputLimitSelector.DEFAULT, getTimePeriod(beta, unit_beta));
         }
 
         stmt.setOutputLimitClause(outputLimitClause);

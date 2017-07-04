@@ -117,9 +117,11 @@ public class RSPQuery extends SPARQLQuery implements it.polimi.heaven.rsp.rsp.qu
      * @return True if the URI used in a FROM NAMED WINDOW clause
      */
     public boolean usesNamedWindowURI(String uri) {
-        return namedwindows.containsKey(NodeFactory.createBlankNode(uri));
+        if(namedwindows!=null && !namedwindows.isEmpty()){
+            return namedwindows.containsKey(NodeFactory.createURI(uri));
+        }
+        return false;
     }
-
 
     /**
      * Test whether the query mentions a URI for a window.
