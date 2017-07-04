@@ -153,6 +153,8 @@ public class Window {
 
     public EPStatementObjectModel toEPL() {
         EPStatementObjectModel stmt = new EPStatementObjectModel();
+        SelectClause wildcard = SelectClause.createWildcard();
+        stmt.setSelectClause(wildcard);
         FromClause fromClause = FromClause.create();
         FilterStream stream = FilterStream.create(EncodingUtils.encode(this.stream.getIri().getURI()));
         stream.addView(getWindow());
@@ -173,7 +175,7 @@ public class Window {
 
     public EPStatementObjectModel toIREPL() {
         EPStatementObjectModel stmt = new EPStatementObjectModel();
-        SelectClause selectClause = SelectClause.create();
+        SelectClause selectClause = SelectClause.createWildcard();
         selectClause.setStreamSelector(StreamSelector.RSTREAM_ISTREAM_BOTH);
         stmt.setSelectClause(selectClause);
         FromClause fromClause = FromClause.create();
